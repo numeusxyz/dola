@@ -178,7 +178,6 @@ func (k *Keep) loadExchange(name string, wg *sync.WaitGroup) error {
 func (e *Keep) setupExchanges() {
 	configs := e.config.GetAllExchangeConfigs()
 
-	// TODO: I see no value in using a WaitGroup.
 	var wg sync.WaitGroup
 	for x := range configs {
 		if !configs[x].Enabled && !e.settings.EnableAllExchanges {
