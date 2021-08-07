@@ -19,26 +19,27 @@ import (
 // +----------+
 
 type Strategy interface {
-	Init(e exchange.IBotExchange) error
-	OnFunding(e exchange.IBotExchange, x stream.FundingData) error
-	OnPrice(e exchange.IBotExchange, x ticker.Price) error
-	OnKline(e exchange.IBotExchange, x stream.KlineData) error
-	OnOrderBook(e exchange.IBotExchange, x orderbook.Base) error
-	OnOrder(e exchange.IBotExchange, x order.Detail) error
-	OnModify(e exchange.IBotExchange, x order.Modify) error
-	OnBalanceChange(e exchange.IBotExchange, x account.Change) error
-	Deinit(e exchange.IBotExchange) error
+	Init() error
+	OnFunding(k *Keep, e exchange.IBotExchange, x stream.FundingData) error
+	OnPrice(k *Keep, e exchange.IBotExchange, x ticker.Price) error
+	OnKline(k *Keep, e exchange.IBotExchange, x stream.KlineData) error
+	OnOrderBook(k *Keep, e exchange.IBotExchange, x orderbook.Base) error
+	OnOrder(k *Keep, e exchange.IBotExchange, x order.Detail) error
+	OnModify(k *Keep, e exchange.IBotExchange, x order.Modify) error
+	OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error
+	Deinit() error
 }
 
 // +---------+
 // | Manager |
 // +---------+
 
-type Manager struct {
+type RootStrategy struct {
 	strategies sync.Map
 }
 
-func (m *Manager) Add(name string, s Strategy) error {
+func (m *RootStrategy) Add(name string, s Strategy) error {
+	s.Init()
 	_, loaded := m.strategies.LoadOrStore(name, s)
 	if loaded {
 		return errors.New("strategy already stored")
@@ -46,20 +47,20 @@ func (m *Manager) Add(name string, s Strategy) error {
 	return nil
 }
 
-func (m *Manager) Delete(name string, e exchange.IBotExchange) error {
+func (m *RootStrategy) Delete(name string) error {
 	x, ok := m.strategies.LoadAndDelete(name)
 	if !ok {
 		return errors.New("strategy not found")
 	}
 	s := x.(Strategy)
-	return s.Deinit(e)
+	return s.Deinit()
 }
 
 // +------------------------------+
 // | Manager + Strategy interface |
 // +------------------------------+
 
-func (m *Manager) each(f func(Strategy) error) error {
+func (m *RootStrategy) each(f func(Strategy) error) error {
 	var err error
 	m.strategies.Range(func(key, value interface{}) bool {
 		s := value.(Strategy)
@@ -69,38 +70,38 @@ func (m *Manager) each(f func(Strategy) error) error {
 	return err
 }
 
-func (m *Manager) Init(e exchange.IBotExchange) error {
-	return m.each(func(s Strategy) error { return s.Init(e) })
+func (m *RootStrategy) Init() error {
+	return m.each(func(s Strategy) error { return s.Init() })
 }
 
-func (m *Manager) OnFunding(e exchange.IBotExchange, x stream.FundingData) error {
-	return m.each(func(s Strategy) error { return s.OnFunding(e, x) })
+func (m *RootStrategy) OnFunding(k *Keep, e exchange.IBotExchange, x stream.FundingData) error {
+	return m.each(func(s Strategy) error { return s.OnFunding(k, e, x) })
 }
 
-func (m *Manager) OnPrice(e exchange.IBotExchange, x ticker.Price) error {
-	return m.each(func(s Strategy) error { return s.OnPrice(e, x) })
+func (m *RootStrategy) OnPrice(k *Keep, e exchange.IBotExchange, x ticker.Price) error {
+	return m.each(func(s Strategy) error { return s.OnPrice(k, e, x) })
 }
 
-func (m *Manager) OnKline(e exchange.IBotExchange, x stream.KlineData) error {
-	return m.each(func(s Strategy) error { return s.OnKline(e, x) })
+func (m *RootStrategy) OnKline(k *Keep, e exchange.IBotExchange, x stream.KlineData) error {
+	return m.each(func(s Strategy) error { return s.OnKline(k, e, x) })
 }
 
-func (m *Manager) OnOrderBook(e exchange.IBotExchange, x orderbook.Base) error {
-	return m.each(func(s Strategy) error { return s.OnOrderBook(e, x) })
+func (m *RootStrategy) OnOrderBook(k *Keep, e exchange.IBotExchange, x orderbook.Base) error {
+	return m.each(func(s Strategy) error { return s.OnOrderBook(k, e, x) })
 }
 
-func (m *Manager) OnOrder(e exchange.IBotExchange, x order.Detail) error {
-	return m.each(func(s Strategy) error { return s.OnOrder(e, x) })
+func (m *RootStrategy) OnOrder(k *Keep, e exchange.IBotExchange, x order.Detail) error {
+	return m.each(func(s Strategy) error { return s.OnOrder(k, e, x) })
 }
 
-func (m *Manager) OnModify(e exchange.IBotExchange, x order.Modify) error {
-	return m.each(func(s Strategy) error { return s.OnModify(e, x) })
+func (m *RootStrategy) OnModify(k *Keep, e exchange.IBotExchange, x order.Modify) error {
+	return m.each(func(s Strategy) error { return s.OnModify(k, e, x) })
 }
 
-func (m *Manager) OnBalanceChange(e exchange.IBotExchange, x account.Change) error {
-	return m.each(func(s Strategy) error { return s.OnBalanceChange(e, x) })
+func (m *RootStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error {
+	return m.each(func(s Strategy) error { return s.OnBalanceChange(k, e, x) })
 }
 
-func (m *Manager) Deinit(e exchange.IBotExchange) error {
-	return m.each(func(s Strategy) error { return s.Deinit(e) })
+func (m *RootStrategy) Deinit() error {
+	return m.each(func(s Strategy) error { return s.Deinit() })
 }

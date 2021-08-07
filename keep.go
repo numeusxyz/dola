@@ -16,10 +16,12 @@ import (
 )
 
 type Keep struct {
-	Root            Manager
+	Root RootStrategy
+
+	settings        engine.Settings
 	config          config.Config
 	exchangeManager engine.ExchangeManager
-	settings        engine.Settings
+	// subs            map[string]*Multiplexer
 }
 
 func NewKeep(settings engine.Settings) (Keep, error) {
@@ -34,6 +36,7 @@ func NewKeep(settings engine.Settings) (Keep, error) {
 	e := Keep{
 		settings:        settings,
 		exchangeManager: *engine.SetupExchangeManager(),
+		// subs:            make(map[string]*Multiplexer),
 	}
 
 	filePath, err := config.GetAndMigrateDefaultPath(e.settings.ConfigFile)
@@ -49,6 +52,26 @@ func NewKeep(settings engine.Settings) (Keep, error) {
 	e.setupExchanges()
 	return e, nil
 }
+
+func (k *Keep) Run() {
+	var wg sync.WaitGroup
+	for _, x := range k.exchangeManager.GetExchanges() {
+		wg.Add(1)
+		go func(x exchange.IBotExchange) {
+			defer wg.Done()
+
+			err := Stream(k, x, &k.Root)
+			// This function is never expected to return.  I'm panic()king
+			// just to maintain the invariant.
+			panic(err)
+		}(x)
+	}
+	wg.Wait()
+}
+
+// func (k *Keep) Subscribe(x exchange.IBotExchange, f Subscriber) {
+// 	k.subs[x.GetName()].Add(f)
+// }
 
 func (k *Keep) loadExchange(name string, wg *sync.WaitGroup) error {
 	exch, err := k.exchangeManager.NewExchangeByName(name)
@@ -175,12 +198,12 @@ func (k *Keep) loadExchange(name string, wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (e *Keep) setupExchanges() {
-	configs := e.config.GetAllExchangeConfigs()
+func (k *Keep) setupExchanges() {
+	configs := k.config.GetAllExchangeConfigs()
 
 	var wg sync.WaitGroup
 	for x := range configs {
-		if !configs[x].Enabled && !e.settings.EnableAllExchanges {
+		if !configs[x].Enabled && !k.settings.EnableAllExchanges {
 			if e := log.Debug(); e.Enabled() {
 				e.Str("what", "Exchange support: Disabled").
 					Str("exchange", configs[x].Name).
@@ -191,7 +214,7 @@ func (e *Keep) setupExchanges() {
 		wg.Add(1)
 		go func(c config.ExchangeConfig) {
 			defer wg.Done()
-			err := e.loadExchange(c.Name, &wg)
+			err := k.loadExchange(c.Name, &wg)
 			if err != nil {
 				log.Error().
 					Str("what", "LoadExchange() failed.").
@@ -209,20 +232,7 @@ func (e *Keep) setupExchanges() {
 		}(configs[x])
 	}
 	wg.Wait()
-}
-
-func (k *Keep) Run() {
-	var wg sync.WaitGroup
-	for _, x := range k.exchangeManager.GetExchanges() {
-		wg.Add(1)
-		go func(x exchange.IBotExchange) {
-			defer wg.Done()
-
-			err := Stream(x, &k.Root)
-			// This function is never expected to return.  I'm panic()king
-			// just to maintain the invariant.
-			panic(err)
-		}(x)
-	}
-	wg.Wait()
+	// for _, x := range k.exchangeManager.GetExchanges() {
+	// 	k.subs[x.GetName()] = &Multiplexer{}
+	// }
 }

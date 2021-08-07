@@ -16,65 +16,59 @@ type DedicatedStrategy struct {
 	Wrapped  Strategy
 }
 
-func (d *DedicatedStrategy) Init(e exchange.IBotExchange) error {
+func (d *DedicatedStrategy) Init() error {
+	return d.Wrapped.Init()
+}
+
+func (d *DedicatedStrategy) OnFunding(k *Keep, e exchange.IBotExchange, x stream.FundingData) error {
 	if e.GetName() == d.Exchange {
-		return d.Wrapped.Init(e)
+		return d.Wrapped.OnFunding(k, e, x)
 	}
 	return nil
 }
 
-func (d *DedicatedStrategy) OnFunding(e exchange.IBotExchange, x stream.FundingData) error {
+func (d *DedicatedStrategy) OnPrice(k *Keep, e exchange.IBotExchange, x ticker.Price) error {
 	if e.GetName() == d.Exchange {
-		return d.Wrapped.OnFunding(e, x)
+		return d.Wrapped.OnPrice(k, e, x)
 	}
 	return nil
 }
 
-func (d *DedicatedStrategy) OnPrice(e exchange.IBotExchange, x ticker.Price) error {
+func (d *DedicatedStrategy) OnKline(k *Keep, e exchange.IBotExchange, x stream.KlineData) error {
 	if e.GetName() == d.Exchange {
-		return d.Wrapped.OnPrice(e, x)
+		return d.Wrapped.OnKline(k, e, x)
 	}
 	return nil
 }
 
-func (d *DedicatedStrategy) OnKline(e exchange.IBotExchange, x stream.KlineData) error {
+func (d *DedicatedStrategy) OnOrderBook(k *Keep, e exchange.IBotExchange, x orderbook.Base) error {
 	if e.GetName() == d.Exchange {
-		return d.Wrapped.OnKline(e, x)
+		return d.Wrapped.OnOrderBook(k, e, x)
 	}
 	return nil
 }
 
-func (d *DedicatedStrategy) OnOrderBook(e exchange.IBotExchange, x orderbook.Base) error {
+func (d *DedicatedStrategy) OnOrder(k *Keep, e exchange.IBotExchange, x order.Detail) error {
 	if e.GetName() == d.Exchange {
-		return d.Wrapped.OnOrderBook(e, x)
+		return d.Wrapped.OnOrder(k, e, x)
 	}
 	return nil
 }
 
-func (d *DedicatedStrategy) OnOrder(e exchange.IBotExchange, x order.Detail) error {
+func (d *DedicatedStrategy) OnModify(k *Keep, e exchange.IBotExchange, x order.Modify) error {
 	if e.GetName() == d.Exchange {
-		return d.Wrapped.OnOrder(e, x)
+		return d.Wrapped.OnModify(k, e, x)
 	}
 	return nil
 }
 
-func (d *DedicatedStrategy) OnModify(e exchange.IBotExchange, x order.Modify) error {
+func (d *DedicatedStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error {
 	if e.GetName() == d.Exchange {
-		return d.Wrapped.OnModify(e, x)
+		return d.Wrapped.OnBalanceChange(k, e, x)
 	}
 	return nil
 }
 
-func (d *DedicatedStrategy) OnBalanceChange(e exchange.IBotExchange, x account.Change) error {
-	if e.GetName() == d.Exchange {
-		return d.Wrapped.OnBalanceChange(e, x)
-	}
-	return nil
-}
-
-func (d *DedicatedStrategy) Deinit(e exchange.IBotExchange) error {
-	if e.GetName() == d.Exchange {
-		return d.Wrapped.Deinit(e)
-	}
-	return nil
+func (d *DedicatedStrategy) Deinit() error {
+	return d.Wrapped.Deinit()
 }

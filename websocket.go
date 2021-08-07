@@ -13,7 +13,7 @@ import (
 	"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
 )
 
-func Stream(e exchange.IBotExchange, s Strategy) error {
+func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 	// Check whether websocket is enabled.
 	if !e.SupportsWebsocket() || !e.IsWebsocketEnabled() {
 		return errors.New("exchange either does not support websocket or is websocket is not enabled")
@@ -49,17 +49,17 @@ func Stream(e exchange.IBotExchange, s Strategy) error {
 		case error:
 			return x
 		case stream.FundingData:
-			s.OnFunding(e, x)
+			s.OnFunding(k, e, x)
 		case *ticker.Price:
-			s.OnPrice(e, *x)
+			s.OnPrice(k, e, *x)
 		case stream.KlineData:
-			s.OnKline(e, x)
+			s.OnKline(k, e, x)
 		case *orderbook.Base:
-			s.OnOrderBook(e, *x)
+			s.OnOrderBook(k, e, *x)
 		case *order.Detail:
-			s.OnOrder(e, *x)
+			s.OnOrder(k, e, *x)
 		case *order.Modify:
-			s.OnModify(e, *x)
+			s.OnModify(k, e, *x)
 		case order.ClassificationError:
 			log.Warn().
 				Str("exchange", x.Exchange).
@@ -76,7 +76,7 @@ func Stream(e exchange.IBotExchange, s Strategy) error {
 				Str("what", "unknown message").
 				Msg(Location())
 		case account.Change:
-			s.OnBalanceChange(e, x)
+			s.OnBalanceChange(k, e, x)
 		// case binance.wsAccountPosition:
 		default:
 			log.Warn().
@@ -88,5 +88,5 @@ func Stream(e exchange.IBotExchange, s Strategy) error {
 	}
 
 	// Unreachable since ws.ToRoutine NEVER gets closed.
-	return nil
+	panic("unexpected")
 }

@@ -7,3 +7,5 @@ require (
 	github.com/thrasher-corp/gocryptotrader v0.0.0-20210806072438-279b53827fd0
 	go.uber.org/multierr v1.7.0
 )
+
+replace github.com/thrasher-corp/gocryptotrader => /home/d/go/src/github.com/ydm/gocryptotrader
