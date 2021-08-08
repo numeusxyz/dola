@@ -21,39 +21,47 @@ var (
 func logError(method string, data interface{}, err error) {
 }
 
-func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error { // nolint: funlen
-	// Following code is a modified mix of
-	// github.com/thrasher-copr/gocryptotrader.engine.websocketRoutineManager.websocketRoutine
-	// and
-	// github.com/thrasher-copr/gocryptotrader.engine.websocketRoutineManager.WebsocketDataHandler
-
+// openWebsocket resembles
+// github.com/thrasher-copr/gocryptotrader.engine.websocketRoutineManager.websocketRoutine.
+func openWebsocket(e exchange.IBotExchange) (*stream.Websocket, error) {
 	// Check whether websocket is enabled.
 	if !e.IsWebsocketEnabled() {
-		return ErrWebsocketNotEnabled
+		return nil, ErrWebsocketNotEnabled
 	}
 
 	// Check whether websocket is supported.
 	if !e.SupportsWebsocket() {
-		return ErrWebsocketNotSupported
+		return nil, ErrWebsocketNotSupported
 	}
 
 	// Instantiate a websocket.
 	ws, err := e.GetWebsocket()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Connect.
 	if !ws.IsConnecting() && !ws.IsConnected() {
 		err = ws.Connect()
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		err = ws.FlushChannels()
 		if err != nil {
-			return err
+			return nil, err
 		}
+	}
+
+	return ws, nil
+}
+
+// Stream resembles
+// github.com/thrasher-copr/gocryptotrader.engine.websocketRoutineManager.WebsocketDataHandler.
+func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
+	ws, err := openWebsocket(e)
+	if err != nil {
+		return err
 	}
 
 	// This goroutine never, I repeat, *never* finishes.

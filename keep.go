@@ -59,18 +59,17 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 func (bot *Keep) Run() {
 	var wg sync.WaitGroup
 
-	f := func(x exchange.IBotExchange) {
-		defer wg.Done()
-
-		err := Stream(bot, x, &bot.Root)
-		// This function is never expected to return.  I'm panic()king
-		// just to maintain the invariant.
-		panic(err)
-	}
-
 	for _, x := range bot.ExchangeManager.GetExchanges() {
 		wg.Add(1)
-		go f(x)
+
+		go func(x exchange.IBotExchange) {
+			defer wg.Done()
+
+			err := Stream(bot, x, &bot.Root)
+			// This function is never expected to return.  I'm panic()king
+			// just to maintain the invariant.
+			panic(err)
+		}(x)
 	}
 
 	wg.Wait()
