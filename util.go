@@ -17,16 +17,18 @@ func Location() string {
 		return "?"
 	}
 	fn := runtime.FuncForPC(pc)
+
 	return fn.Name()
 }
 
 // Location2 returns the name of the grandparent calling function.
 func Location2() string {
-	pc, _, _, ok := runtime.Caller(2)
+	pc, _, _, ok := runtime.Caller(2) // nolint:gomnd
 	if !ok {
 		return "?"
 	}
 	fn := runtime.FuncForPC(pc)
+
 	return fn.Name()
 }
 
@@ -42,6 +44,7 @@ type resourceChecker struct {
 	resources map[string]int
 }
 
+// nolint:gochecknoglobals
 var defaultResourceChecker = resourceChecker{resources: make(map[string]int)}
 
 func CheckerPush(xs ...string) {
@@ -52,26 +55,28 @@ func CheckerPush(xs ...string) {
 	case 1:
 		name = xs[0]
 	default:
-		panic("invalid arugment")
+		panic("invalid argument")
 	}
 	defaultResourceChecker.m.Lock()
-	defer defaultResourceChecker.m.Unlock()
-	defaultResourceChecker.resources[name] += 1
+	defaultResourceChecker.resources[name]++
+	defaultResourceChecker.m.Unlock()
 }
 
 func CheckerPop(xs ...string) {
 	var name string
+
 	switch len(xs) {
 	case 0:
 		name = Location2()
 	case 1:
 		name = xs[0]
 	default:
-		panic("invalid arugment")
+		panic("invalid argument")
 	}
+
 	defaultResourceChecker.m.Lock()
-	defer defaultResourceChecker.m.Unlock()
-	defaultResourceChecker.resources[name] -= 1
+	defaultResourceChecker.resources[name]--
+	defaultResourceChecker.m.Unlock()
 }
 
 // CheckerAssert should be defer-called in main().
@@ -99,14 +104,16 @@ type Profiler struct {
 
 func NewProfiler(filename string) Profiler {
 	p := Profiler{filename}
+
 	f, err := os.Create(p.Filename)
 	if err != nil {
 		panic(err)
 	}
-	err = pprof.StartCPUProfile(f)
-	if err != nil {
+
+	if err := pprof.StartCPUProfile(f); err != nil {
 		panic(err)
 	}
+
 	return p
 }
 

@@ -13,13 +13,21 @@ import (
 	"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
 )
 
+var (
+	ErrWebsocketNotSupported = errors.New("websocket not supported")
+	ErrWebsocketNotEnabled   = errors.New("websocket is not enabled")
+)
+
 func logError(method string, data interface{}, err error) {
 }
 
-func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
+func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error { // nolint: funlen
 	// Check whether websocket is enabled.
-	if !e.SupportsWebsocket() || !e.IsWebsocketEnabled() {
-		return errors.New("exchange either does not support websocket or is websocket is not enabled")
+	if !e.SupportsWebsocket() {
+		return ErrWebsocketNotSupported
+	}
+	if !e.IsWebsocketEnabled() {
+		return ErrWebsocketNotEnabled
 	}
 
 	// Instantiate a websocket.
@@ -69,9 +77,11 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 				Str("OrderID", x.OrderID).
 				Err(x.Err).
 				Msg(Location())
+
 			if x.Err == nil {
 				panic("expected an error")
 			}
+
 			return x.Err
 		case stream.UnhandledMessageWarning:
 			log.Warn().

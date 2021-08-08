@@ -2,10 +2,9 @@ package dola
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
-
-	"go.uber.org/multierr"
 
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
@@ -13,6 +12,12 @@ import (
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
+	"go.uber.org/multierr"
+)
+
+var (
+	ErrStrategyNotFound      = errors.New("strategy not found")
+	ErrStrategyAlreadyExists = errors.New("strategy already exists")
 )
 
 // +----------+
@@ -51,20 +56,25 @@ type RootStrategy struct {
 }
 
 func (m *RootStrategy) Add(name string, s Strategy) error {
-	s.Init()
-	_, loaded := m.strategies.LoadOrStore(name, s)
-	if loaded {
-		return errors.New("strategy already stored")
+	if err := s.Init(); err != nil {
+		return fmt.Errorf("Strategy.Init failed: %w", err)
 	}
+
+	if _, loaded := m.strategies.LoadOrStore(name, s); loaded {
+		return ErrStrategyAlreadyExists
+	}
+
 	return nil
 }
 
 func (m *RootStrategy) Delete(name string) error {
 	x, ok := m.strategies.LoadAndDelete(name)
+
 	if !ok {
-		return errors.New("strategy not found")
+		return ErrStrategyNotFound
 	}
 	s := x.(Strategy)
+
 	return s.Deinit()
 }
 
@@ -74,11 +84,14 @@ func (m *RootStrategy) Delete(name string) error {
 
 func (m *RootStrategy) each(f func(Strategy) error) error {
 	var err error
+
 	m.strategies.Range(func(key, value interface{}) bool {
 		s := value.(Strategy)
 		err = multierr.Append(err, f(s))
+
 		return true
 	})
+
 	return err
 }
 

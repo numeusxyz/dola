@@ -1,11 +1,14 @@
 package dola
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
 
 	"github.com/rs/zerolog/log"
+	"github.com/thrasher-corp/gocryptotrader/common"
 	"github.com/thrasher-corp/gocryptotrader/config"
 	"github.com/thrasher-corp/gocryptotrader/currency"
 	"github.com/thrasher-corp/gocryptotrader/engine"
@@ -16,9 +19,9 @@ import (
 type Keep struct {
 	Root RootStrategy
 
-	settings        engine.Settings
-	config          config.Config
-	exchangeManager engine.ExchangeManager
+	Settings        engine.Settings
+	Config          config.Config
+	ExchangeManager engine.ExchangeManager
 	// subs            map[string]*Multiplexer
 }
 
@@ -31,144 +34,175 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 		path := filepath.Join(home, ".dola/config.json")
 		settings.ConfigFile = path
 	}
-	e := &Keep{
-		settings:        settings,
-		exchangeManager: *engine.SetupExchangeManager(),
-		// subs:            make(map[string]*Multiplexer),
+	keep := &Keep{
+		Settings:        settings,
+		ExchangeManager: *engine.SetupExchangeManager(),
 	}
 
-	filePath, err := config.GetAndMigrateDefaultPath(e.settings.ConfigFile)
+	filePath, err := config.GetAndMigrateDefaultPath(keep.Settings.ConfigFile)
 	if err != nil {
-		return e, err
+		return keep, err
 	}
 
-	err = e.config.ReadConfigFromFile(filePath, e.settings.EnableDryRun)
-	if err != nil {
-		return e, err
+	if err := keep.Config.ReadConfigFromFile(filePath, keep.Settings.EnableDryRun); err != nil {
+		return keep, err
 	}
 
-	e.setupExchanges()
+	if err := keep.setupExchanges(GCTLog{}); err != nil {
+		return keep, err
+	}
 
-	return e, nil
+	return keep, nil
 }
 
-func (k *Keep) Run() {
+func (bot *Keep) Run() {
 	var wg sync.WaitGroup
 
 	f := func(x exchange.IBotExchange) {
 		defer wg.Done()
 
-		err := Stream(k, x, &k.Root)
+		err := Stream(bot, x, &bot.Root)
 		// This function is never expected to return.  I'm panic()king
 		// just to maintain the invariant.
 		panic(err)
 	}
 
-	for _, x := range k.exchangeManager.GetExchanges() {
+	for _, x := range bot.ExchangeManager.GetExchanges() {
 		wg.Add(1)
 		go f(x)
 	}
 	wg.Wait()
 }
 
-func (k *Keep) exchangeConfig(name string) (*config.ExchangeConfig, error) {
-	conf, err := k.config.GetExchangeConfig(name)
-	if err != nil {
-		return conf, err
-	}
+// +-------------------------+
+// | GCT compatibility layer |
+// +-------------------------+
 
-	if k.settings.EnableAllPairs &&
-		conf.CurrencyPairs != nil {
-		assets := conf.CurrencyPairs.GetAssetTypes(false)
-		for x := range assets {
-			var pairs currency.Pairs
-			pairs, err = conf.CurrencyPairs.GetPairs(assets[x], false)
-			if err != nil {
-				return conf, err
-			}
-			conf.CurrencyPairs.StorePairs(assets[x], pairs, true)
-		}
-	}
-
-	if k.settings.EnableExchangeVerbose {
-		conf.Verbose = true
-	}
-	if conf.Features != nil {
-		if k.settings.EnableExchangeWebsocketSupport && conf.Features.Supports.Websocket {
-			conf.Features.Enabled.Websocket = true
-		}
-		if k.settings.EnableExchangeAutoPairUpdates && conf.Features.Supports.RESTCapabilities.AutoPairUpdates {
-			conf.Features.Enabled.AutoPairUpdates = true
-		}
-		if k.settings.DisableExchangeAutoPairUpdates && conf.Features.Supports.RESTCapabilities.AutoPairUpdates {
-			conf.Features.Enabled.AutoPairUpdates = false
-		}
-	}
-	if k.settings.HTTPUserAgent != "" {
-		conf.HTTPUserAgent = k.settings.HTTPUserAgent
-	}
-	if k.settings.HTTPProxy != "" {
-		conf.ProxyAddress = k.settings.HTTPProxy
-	}
-	if k.settings.HTTPTimeout != exchange.DefaultHTTPTimeout {
-		conf.HTTPTimeout = k.settings.HTTPTimeout
-	}
-	if k.settings.EnableExchangeHTTPDebugging {
-		conf.HTTPDebugging = k.settings.EnableExchangeHTTPDebugging
-	}
-
-	return conf, nil
+type GCTLog struct {
+	ExchangeSys struct{}
 }
 
-// func (k *Keep) Subscribe(x exchange.IBotExchange, f Subscriber) {
-// 	k.subs[x.GetName()].Add(f)
-// }
+func (g GCTLog) Warnf(_ interface{}, data string, v ...interface{}) {
+	log.Warn().Str("what", fmt.Sprintf(data, v...)).Msg(Location())
+}
 
-// loadExchange is copied from github.com/thrasher-corp/gocryptotrader.
-func (k *Keep) loadExchange(name string, wg *sync.WaitGroup) error {
-	exch, err := k.exchangeManager.NewExchangeByName(name)
+func (g GCTLog) Errorf(_ interface{}, data string, v ...interface{}) {
+	log.Error().Str("what", fmt.Sprintf(data, v...)).Msg(Location())
+}
+
+func (g GCTLog) Debugf(_ interface{}, data string, v ...interface{}) {
+	log.Debug().Str("what", fmt.Sprintf(data, v...)).Msg(Location())
+}
+
+// +----------------------------+
+// | Copied from gocryptotrader |
+// +----------------------------+
+
+var (
+	ErrNoExchangesLoaded     = errors.New("no exchanges have been loaded")
+	ErrExchangeNotFound      = errors.New("exchange not found")
+	ErrExchangeAlreadyLoaded = errors.New("exchange already loaded")
+	ErrExchangeFailedToLoad  = errors.New("exchange failed to load")
+)
+
+func (bot *Keep) LoadExchange(name string, wg *sync.WaitGroup) error {
+	return bot.loadExchange(name, wg, GCTLog{})
+}
+
+// loadExchange is an unchanged copy of Engine.LoadExchange.
+//
+// nolint
+func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) error {
+	exch, err := bot.ExchangeManager.NewExchangeByName(name)
 	if err != nil {
 		return err
 	}
-	base := exch.GetBase()
-	if base == nil {
-		panic("invalid state")
+	if exch.GetBase() == nil {
+		return ErrExchangeFailedToLoad
 	}
 
-	// This, it looks like, is a lengthy operation.  In the original code (of
-	// gocryptotrader) it was moved in a goroutine.
-	exch.SetDefaults()
-
-	conf, err := k.exchangeConfig(exch.GetName())
+	var localWG sync.WaitGroup
+	localWG.Add(1)
+	go func() {
+		exch.SetDefaults()
+		localWG.Done()
+	}()
+	exchCfg, err := bot.Config.GetExchangeConfig(name)
 	if err != nil {
 		return err
 	}
 
-	if !k.settings.EnableExchangeHTTPRateLimiter {
-		log.Info().
-			Str("what", "Loaded exchange rate limiting has been turned off.").
-			Str("exchange", name).
-			Msg(Location())
-		err = exch.DisableRateLimiter()
-		if err != nil {
-			log.Error().
-				Err(err).
-				Str("what", "Loaded exchange %s rate limiting cannot be turned off.").
-				Str("exchange", name).
-				Msg(Location())
+	if bot.Settings.EnableAllPairs &&
+		exchCfg.CurrencyPairs != nil {
+		assets := exchCfg.CurrencyPairs.GetAssetTypes(false)
+		for x := range assets {
+			var pairs currency.Pairs
+			pairs, err = exchCfg.CurrencyPairs.GetPairs(assets[x], false)
+			if err != nil {
+				return err
+			}
+			exchCfg.CurrencyPairs.StorePairs(assets[x], pairs, true)
 		}
 	}
 
-	if err := exch.Setup(conf); err != nil {
-		conf.Enabled = false
+	if bot.Settings.EnableExchangeVerbose {
+		exchCfg.Verbose = true
+	}
+	if exchCfg.Features != nil {
+		if bot.Settings.EnableExchangeWebsocketSupport &&
+			exchCfg.Features.Supports.Websocket {
+			exchCfg.Features.Enabled.Websocket = true
+		}
+		if bot.Settings.EnableExchangeAutoPairUpdates &&
+			exchCfg.Features.Supports.RESTCapabilities.AutoPairUpdates {
+			exchCfg.Features.Enabled.AutoPairUpdates = true
+		}
+		if bot.Settings.DisableExchangeAutoPairUpdates {
+			if exchCfg.Features.Supports.RESTCapabilities.AutoPairUpdates {
+				exchCfg.Features.Enabled.AutoPairUpdates = false
+			}
+		}
+	}
+	if bot.Settings.HTTPUserAgent != "" {
+		exchCfg.HTTPUserAgent = bot.Settings.HTTPUserAgent
+	}
+	if bot.Settings.HTTPProxy != "" {
+		exchCfg.ProxyAddress = bot.Settings.HTTPProxy
+	}
+	if bot.Settings.HTTPTimeout != exchange.DefaultHTTPTimeout {
+		exchCfg.HTTPTimeout = bot.Settings.HTTPTimeout
+	}
+	if bot.Settings.EnableExchangeHTTPDebugging {
+		exchCfg.HTTPDebugging = bot.Settings.EnableExchangeHTTPDebugging
+	}
 
+	localWG.Wait()
+	if !bot.Settings.EnableExchangeHTTPRateLimiter {
+		gctlog.Warnf(gctlog.ExchangeSys,
+			"Loaded exchange %s rate limiting has been turned off.\n",
+			exch.GetName(),
+		)
+		err = exch.DisableRateLimiter()
+		if err != nil {
+			gctlog.Errorf(gctlog.ExchangeSys,
+				"Loaded exchange %s rate limiting cannot be turned off: %s.\n",
+				exch.GetName(),
+				err,
+			)
+		}
+	}
+
+	exchCfg.Enabled = true
+	err = exch.Setup(exchCfg)
+	if err != nil {
+		exchCfg.Enabled = false
 		return err
 	}
 
-	conf.Enabled = true
-	k.exchangeManager.Add(exch)
-
-	if base.API.AuthenticatedSupport || base.API.AuthenticatedWebsocketSupport {
+	bot.ExchangeManager.Add(exch)
+	base := exch.GetBase()
+	if base.API.AuthenticatedSupport ||
+		base.API.AuthenticatedWebsocketSupport {
 		assetTypes := base.GetAssetTypes(false)
 		var useAsset asset.Item
 		for a := range assetTypes {
@@ -177,66 +211,62 @@ func (k *Keep) loadExchange(name string, wg *sync.WaitGroup) error {
 				continue
 			}
 			useAsset = assetTypes[a]
-
 			break
 		}
 		err = exch.ValidateCredentials(useAsset)
 		if err != nil {
-			log.Warn().
-				Str("what", "Cannot validate credentials, authenticated support has been disabled.").
-				Str("base.Name", base.Name).
-				Err(err).
-				Msg(Location())
+			gctlog.Warnf(gctlog.ExchangeSys,
+				"%s: Cannot validate credentials, authenticated support has been disabled, Error: %s\n",
+				base.Name,
+				err)
 			base.API.AuthenticatedSupport = false
 			base.API.AuthenticatedWebsocketSupport = false
-			conf.API.AuthenticatedSupport = false
-			conf.API.AuthenticatedWebsocketSupport = false
+			exchCfg.API.AuthenticatedSupport = false
+			exchCfg.API.AuthenticatedWebsocketSupport = false
 		}
 	}
 
-	exch.Start(wg)
+	if wg != nil {
+		exch.Start(wg)
+	} else {
+		tempWG := sync.WaitGroup{}
+		exch.Start(&tempWG)
+		tempWG.Wait()
+	}
 
 	return nil
 }
 
-func (k *Keep) setupExchanges() {
+// setupExchanges is an unchanged copy of Engine.SetupExchanges.
+//
+// nolint
+func (bot *Keep) setupExchanges(gctlog GCTLog) error {
 	var wg sync.WaitGroup
-
-	f := func(c config.ExchangeConfig) {
-		defer wg.Done()
-		err := k.loadExchange(c.Name, &wg)
-		if err != nil {
-			log.Error().
-				Str("what", "LoadExchange() failed.").
-				Str("exchange", c.Name).
-				Err(err).
-				Msg(Location())
-		}
-		if e := log.Debug(); e.Enabled() {
-			e.Str("what", "Exchange support: Enabled.").
-				Str("exchange", c.Name).
-				Bool("AuthenticatedSupport", c.API.AuthenticatedSupport).
-				Bool("Verbose", c.Verbose).
-				Msg(Location())
-		}
-	}
-
-	configs := k.config.GetAllExchangeConfigs()
+	configs := bot.Config.GetAllExchangeConfigs()
 	for x := range configs {
-		if !configs[x].Enabled && !k.settings.EnableAllExchanges {
-			if e := log.Debug(); e.Enabled() {
-				e.Str("what", "Exchange support: Disabled").
-					Str("exchange", configs[x].Name).
-					Msg(Location())
-			}
-
+		if !configs[x].Enabled && !bot.Settings.EnableAllExchanges {
+			gctlog.Debugf(gctlog.ExchangeSys, "%s: Exchange support: Disabled\n", configs[x].Name)
 			continue
 		}
 		wg.Add(1)
-		go f(configs[x])
+		go func(c config.ExchangeConfig) {
+			defer wg.Done()
+			err := bot.LoadExchange(c.Name, &wg)
+			if err != nil {
+				gctlog.Errorf(gctlog.ExchangeSys, "LoadExchange %s failed: %s\n", c.Name, err)
+				return
+			}
+			gctlog.Debugf(gctlog.ExchangeSys,
+				"%s: Exchange support: Enabled (Authenticated API support: %s - Verbose mode: %s).\n",
+				c.Name,
+				common.IsEnabled(c.API.AuthenticatedSupport),
+				common.IsEnabled(c.Verbose),
+			)
+		}(configs[x])
 	}
 	wg.Wait()
-	// for _, x := range k.exchangeManager.GetExchanges() {
-	// 	k.subs[x.GetName()] = &Multiplexer{}
-	// }
+	if len(bot.ExchangeManager.GetExchanges()) == 0 {
+		return ErrNoExchangesLoaded
+	}
+	return nil
 }

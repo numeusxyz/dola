@@ -24,6 +24,7 @@ func (d *DedicatedStrategy) OnFunding(k *Keep, e exchange.IBotExchange, x stream
 	if e.GetName() == d.Exchange {
 		return d.Wrapped.OnFunding(k, e, x)
 	}
+
 	return nil
 }
 
@@ -31,6 +32,7 @@ func (d *DedicatedStrategy) OnPrice(k *Keep, e exchange.IBotExchange, x ticker.P
 	if e.GetName() == d.Exchange {
 		return d.Wrapped.OnPrice(k, e, x)
 	}
+
 	return nil
 }
 
@@ -38,6 +40,7 @@ func (d *DedicatedStrategy) OnKline(k *Keep, e exchange.IBotExchange, x stream.K
 	if e.GetName() == d.Exchange {
 		return d.Wrapped.OnKline(k, e, x)
 	}
+
 	return nil
 }
 
@@ -45,6 +48,7 @@ func (d *DedicatedStrategy) OnOrderBook(k *Keep, e exchange.IBotExchange, x orde
 	if e.GetName() == d.Exchange {
 		return d.Wrapped.OnOrderBook(k, e, x)
 	}
+
 	return nil
 }
 
@@ -52,6 +56,7 @@ func (d *DedicatedStrategy) OnOrder(k *Keep, e exchange.IBotExchange, x order.De
 	if e.GetName() == d.Exchange {
 		return d.Wrapped.OnOrder(k, e, x)
 	}
+
 	return nil
 }
 
@@ -59,6 +64,7 @@ func (d *DedicatedStrategy) OnModify(k *Keep, e exchange.IBotExchange, x order.M
 	if e.GetName() == d.Exchange {
 		return d.Wrapped.OnModify(k, e, x)
 	}
+
 	return nil
 }
 
@@ -66,6 +72,7 @@ func (d *DedicatedStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x 
 	if e.GetName() == d.Exchange {
 		return d.Wrapped.OnBalanceChange(k, e, x)
 	}
+
 	return nil
 }
 
