@@ -39,13 +39,6 @@ type Strategy interface {
 	OnOrder(k *Keep, e exchange.IBotExchange, x order.Detail) error
 	OnModify(k *Keep, e exchange.IBotExchange, x order.Modify) error
 	OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error
-
-	OnOrderPlace(k *Keep, e exchange.IBotExchange, x order.Detail) error
-	// TODO: OnOrderCancel()
-	// TODO: OnOrderExpire()
-	// TODO: OnOrderReject()
-	OnTrade(k *Keep, e exchange.IBotExchange, x Trade) error
-
 	Deinit() error
 }
 
@@ -119,14 +112,6 @@ func (m *RootStrategy) OnModify(k *Keep, e exchange.IBotExchange, x order.Modify
 
 func (m *RootStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error {
 	return m.each(func(s Strategy) error { return s.OnBalanceChange(k, e, x) })
-}
-
-func (m *RootStrategy) OnOrderPlace(k *Keep, e exchange.IBotExchange, x order.Detail) error {
-	return m.each(func(s Strategy) error { return s.OnOrder(k, e, x) })
-}
-
-func (m *RootStrategy) OnTrade(k *Keep, e exchange.IBotExchange, x Trade) error {
-	return m.each(func(s Strategy) error { return s.OnTrade(k, e, x) })
 }
 
 func (m *RootStrategy) Deinit() error {

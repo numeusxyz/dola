@@ -3,12 +3,10 @@ package dola
 import (
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/rs/zerolog/log"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/ftx"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
@@ -62,12 +60,7 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 		case *orderbook.Base:
 			logError("OnOrderBook", data, s.OnOrderBook(k, e, *x))
 		case *order.Detail:
-			copy := *x
-			if copy.Status == order.New {
-				logError("OnOrderPlace", data, s.OnOrderPlace(k, e, copy))
-			} else {
-				logError("OnOrderPlace", data, s.OnOrder(k, e, *x))
-			}
+			logError("OnOrderPlace", data, s.OnOrder(k, e, *x))
 		case *order.Modify:
 			logError("OnModify", data, s.OnModify(k, e, *x))
 		case order.ClassificationError:
@@ -89,21 +82,21 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 			logError("OnBalanceChange", data, s.OnBalanceChange(k, e, x))
 		// case binance.wsAccountPosition:
 		//
-		// Order filling is now supported just for FTX.
-		// Support for other exchanges should be added
-		// manually here.
-		case ftx.WsFills:
-			err = s.OnTrade(k, e, Trade{
-				Timestamp:     x.Time,
-				BaseCurrency:  x.BaseCurrency,
-				QuoteCurrency: x.QuoteCurrency,
-				OrderID:       strconv.FormatInt(x.OrderID, 10),
-				AveragePrice:  x.Price,
-				Quantity:      x.Size,
-				Fee:           x.Fee,
-				FeeCurrency:   x.FeeCurrency,
-			})
-			logError("OnTrade", data, err)
+		// // Order filling is now supported just for FTX.
+		// // Support for other exchanges should be added
+		// // manually here.
+		// case ftx.WsFills:
+		// 	err = s.OnTrade(k, e, Trade{
+		// 		Timestamp:     x.Time,
+		// 		BaseCurrency:  x.BaseCurrency,
+		// 		QuoteCurrency: x.QuoteCurrency,
+		// 		OrderID:       strconv.FormatInt(x.OrderID, 10),
+		// 		AveragePrice:  x.Price,
+		// 		Quantity:      x.Size,
+		// 		Fee:           x.Fee,
+		// 		FeeCurrency:   x.FeeCurrency,
+		// 	})
+		// 	logError("OnTrade", data, err)
 		default:
 			log.Warn().
 				// Fields(map[string]interface{}{"data": data}).
