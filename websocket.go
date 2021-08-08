@@ -93,7 +93,7 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 		// Support for other exchanges should be added
 		// manually here.
 		case ftx.WsFills:
-			err = s.OnOrderFill(k, e, OrderFill{
+			err = s.OnTrade(k, e, Trade{
 				Timestamp:     x.Time,
 				BaseCurrency:  x.BaseCurrency,
 				QuoteCurrency: x.QuoteCurrency,
@@ -103,7 +103,7 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 				Fee:           x.Fee,
 				FeeCurrency:   x.FeeCurrency,
 			})
-			logError("OnOrderFill", data, err)
+			logError("OnTrade", data, err)
 		default:
 			log.Warn().
 				// Fields(map[string]interface{}{"data": data}).

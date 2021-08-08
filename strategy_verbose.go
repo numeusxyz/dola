@@ -71,8 +71,8 @@ func (v VerboseStrategy) OnOrderPlace(k *Keep, e exchange.IBotExchange, x order.
 	return nil
 }
 
-func (v VerboseStrategy) OnOrderFill(k *Keep, e exchange.IBotExchange, x OrderFill) error {
-	fmt.Printf("VerboseStrategy.OnOrderFill(): e=%s, x=%v\n", e.GetName(), x)
+func (v VerboseStrategy) OnTrade(k *Keep, e exchange.IBotExchange, x Trade) error {
+	fmt.Printf("VerboseStrategy.OnTrade(): e=%s, x=%v\n", e.GetName(), x)
 	return nil
 }
 

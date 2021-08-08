@@ -19,7 +19,7 @@ import (
 // | Strategy |
 // +----------+
 
-type OrderFill struct {
+type Trade struct {
 	Timestamp     time.Time
 	BaseCurrency  string
 	QuoteCurrency string
@@ -44,7 +44,7 @@ type Strategy interface {
 	// TODO: OnOrderCancel()
 	// TODO: OnOrderExpire()
 	// TODO: OnOrderReject()
-	OnOrderFill(k *Keep, e exchange.IBotExchange, x OrderFill) error
+	OnTrade(k *Keep, e exchange.IBotExchange, x Trade) error
 
 	Deinit() error
 }
@@ -125,8 +125,8 @@ func (m *RootStrategy) OnOrderPlace(k *Keep, e exchange.IBotExchange, x order.De
 	return m.each(func(s Strategy) error { return s.OnOrder(k, e, x) })
 }
 
-func (m *RootStrategy) OnOrderFill(k *Keep, e exchange.IBotExchange, x OrderFill) error {
-	return m.each(func(s Strategy) error { return s.OnOrderFill(k, e, x) })
+func (m *RootStrategy) OnTrade(k *Keep, e exchange.IBotExchange, x Trade) error {
+	return m.each(func(s Strategy) error { return s.OnTrade(k, e, x) })
 }
 
 func (m *RootStrategy) Deinit() error {
