@@ -16,6 +16,7 @@ func Location() string {
 	if !ok {
 		return "?"
 	}
+
 	fn := runtime.FuncForPC(pc)
 
 	return fn.Name()
@@ -27,6 +28,7 @@ func Location2() string {
 	if !ok {
 		return "?"
 	}
+
 	fn := runtime.FuncForPC(pc)
 
 	return fn.Name()
@@ -49,6 +51,7 @@ var defaultResourceChecker = resourceChecker{resources: make(map[string]int)}
 
 func CheckerPush(xs ...string) {
 	var name string
+
 	switch len(xs) {
 	case 0:
 		name = Location2()
@@ -57,6 +60,7 @@ func CheckerPush(xs ...string) {
 	default:
 		panic("invalid argument")
 	}
+
 	defaultResourceChecker.m.Lock()
 	defaultResourceChecker.resources[name]++
 	defaultResourceChecker.m.Unlock()

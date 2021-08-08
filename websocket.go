@@ -22,12 +22,19 @@ func logError(method string, data interface{}, err error) {
 }
 
 func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error { // nolint: funlen
+	// Following code is a modified mix of
+	// github.com/thrasher-copr/gocryptotrader.engine.websocketRoutineManager.websocketRoutine
+	// and
+	// github.com/thrasher-copr/gocryptotrader.engine.websocketRoutineManager.WebsocketDataHandler
+
 	// Check whether websocket is enabled.
-	if !e.SupportsWebsocket() {
-		return ErrWebsocketNotSupported
-	}
 	if !e.IsWebsocketEnabled() {
 		return ErrWebsocketNotEnabled
+	}
+
+	// Check whether websocket is supported.
+	if !e.SupportsWebsocket() {
+		return ErrWebsocketNotSupported
 	}
 
 	// Instantiate a websocket.

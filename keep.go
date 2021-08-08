@@ -31,9 +31,11 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 		if err != nil {
 			return &Keep{}, err
 		}
+
 		path := filepath.Join(home, ".dola/config.json")
 		settings.ConfigFile = path
 	}
+
 	keep := &Keep{
 		Settings:        settings,
 		ExchangeManager: *engine.SetupExchangeManager(),
@@ -71,6 +73,7 @@ func (bot *Keep) Run() {
 		wg.Add(1)
 		go f(x)
 	}
+
 	wg.Wait()
 }
 

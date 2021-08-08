@@ -69,10 +69,10 @@ func (m *RootStrategy) Add(name string, s Strategy) error {
 
 func (m *RootStrategy) Delete(name string) error {
 	x, ok := m.strategies.LoadAndDelete(name)
-
 	if !ok {
 		return ErrStrategyNotFound
 	}
+
 	s := x.(Strategy)
 
 	return s.Deinit()
