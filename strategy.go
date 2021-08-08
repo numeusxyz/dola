@@ -3,6 +3,7 @@ package dola
 import (
 	"errors"
 	"sync"
+	"time"
 
 	"go.uber.org/multierr"
 
@@ -18,6 +19,17 @@ import (
 // | Strategy |
 // +----------+
 
+type OrderFill struct {
+	Timestamp     time.Time
+	BaseCurrency  string
+	QuoteCurrency string
+	OrderID       string
+	AveragePrice  float64
+	Quantity      float64
+	Fee           float64
+	FeeCurrency   string
+}
+
 type Strategy interface {
 	Init() error
 	OnFunding(k *Keep, e exchange.IBotExchange, x stream.FundingData) error
@@ -27,6 +39,13 @@ type Strategy interface {
 	OnOrder(k *Keep, e exchange.IBotExchange, x order.Detail) error
 	OnModify(k *Keep, e exchange.IBotExchange, x order.Modify) error
 	OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error
+
+	OnOrderPlace(k *Keep, e exchange.IBotExchange, x order.Detail) error
+	// TODO: OnOrderCancel()
+	// TODO: OnOrderExpire()
+	// TODO: OnOrderReject()
+	OnOrderFill(k *Keep, e exchange.IBotExchange, x OrderFill) error
+
 	Deinit() error
 }
 
@@ -100,6 +119,14 @@ func (m *RootStrategy) OnModify(k *Keep, e exchange.IBotExchange, x order.Modify
 
 func (m *RootStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error {
 	return m.each(func(s Strategy) error { return s.OnBalanceChange(k, e, x) })
+}
+
+func (m *RootStrategy) OnOrderPlace(k *Keep, e exchange.IBotExchange, x order.Detail) error {
+	return m.each(func(s Strategy) error { return s.OnOrder(k, e, x) })
+}
+
+func (m *RootStrategy) OnOrderFill(k *Keep, e exchange.IBotExchange, x OrderFill) error {
+	return m.each(func(s Strategy) error { return s.OnOrderFill(k, e, x) })
 }
 
 func (m *RootStrategy) Deinit() error {

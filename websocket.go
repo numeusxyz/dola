@@ -3,15 +3,20 @@ package dola
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/rs/zerolog/log"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/ftx"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
 )
+
+func logError(method string, data interface{}, err error) {
+}
 
 func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 	// Check whether websocket is enabled.
@@ -49,17 +54,22 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 		case error:
 			return x
 		case stream.FundingData:
-			s.OnFunding(k, e, x)
+			logError("OnFunding", data, s.OnFunding(k, e, x))
 		case *ticker.Price:
-			s.OnPrice(k, e, *x)
+			logError("OnPrice", data, s.OnPrice(k, e, *x))
 		case stream.KlineData:
-			s.OnKline(k, e, x)
+			logError("OnKline", data, s.OnKline(k, e, x))
 		case *orderbook.Base:
-			s.OnOrderBook(k, e, *x)
+			logError("OnOrderBook", data, s.OnOrderBook(k, e, *x))
 		case *order.Detail:
-			s.OnOrder(k, e, *x)
+			copy := *x
+			if copy.Status == order.New {
+				logError("OnOrderPlace", data, s.OnOrderPlace(k, e, copy))
+			} else {
+				logError("OnOrderPlace", data, s.OnOrder(k, e, *x))
+			}
 		case *order.Modify:
-			s.OnModify(k, e, *x)
+			logError("OnModify", data, s.OnModify(k, e, *x))
 		case order.ClassificationError:
 			log.Warn().
 				Str("exchange", x.Exchange).
@@ -76,8 +86,24 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 				Str("what", "unknown message").
 				Msg(Location())
 		case account.Change:
-			s.OnBalanceChange(k, e, x)
+			logError("OnBalanceChange", data, s.OnBalanceChange(k, e, x))
 		// case binance.wsAccountPosition:
+		//
+		// Order filling is now supported just for FTX.
+		// Support for other exchanges should be added
+		// manually here.
+		case ftx.WsFills:
+			err = s.OnOrderFill(k, e, OrderFill{
+				Timestamp:     x.Time,
+				BaseCurrency:  x.BaseCurrency,
+				QuoteCurrency: x.QuoteCurrency,
+				OrderID:       strconv.FormatInt(x.ID, 10),
+				AveragePrice:  x.Price,
+				Quantity:      x.Size,
+				Fee:           x.Fee,
+				FeeCurrency:   x.FeeCurrency,
+			})
+			logError("OnOrderFill", data, err)
 		default:
 			log.Warn().
 				// Fields(map[string]interface{}{"data": data}).

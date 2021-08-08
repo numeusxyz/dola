@@ -66,6 +66,16 @@ func (v VerboseStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x acc
 	return nil
 }
 
+func (v VerboseStrategy) OnOrderPlace(k *Keep, e exchange.IBotExchange, x order.Detail) error {
+	fmt.Printf("VerboseStrategy.OnOrderPlace(): e=%s, x=%v\n", e.GetName(), x)
+	return nil
+}
+
+func (v VerboseStrategy) OnOrderFill(k *Keep, e exchange.IBotExchange, x OrderFill) error {
+	fmt.Printf("VerboseStrategy.OnOrderFill(): e=%s, x=%v\n", e.GetName(), x)
+	return nil
+}
+
 func (v VerboseStrategy) Deinit() error {
 	fmt.Println("VerboseStrategy.OnDeinit()")
 	return nil
