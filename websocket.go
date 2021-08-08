@@ -97,7 +97,7 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 				Timestamp:     x.Time,
 				BaseCurrency:  x.BaseCurrency,
 				QuoteCurrency: x.QuoteCurrency,
-				OrderID:       strconv.FormatInt(x.ID, 10),
+				OrderID:       strconv.FormatInt(x.OrderID, 10),
 				AveragePrice:  x.Price,
 				Quantity:      x.Size,
 				Fee:           x.Fee,
