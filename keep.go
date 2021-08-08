@@ -22,7 +22,6 @@ type Keep struct {
 	Settings        engine.Settings
 	Config          config.Config
 	ExchangeManager engine.ExchangeManager
-	// subs            map[string]*Multiplexer
 }
 
 func NewKeep(settings engine.Settings) (*Keep, error) {
@@ -97,20 +96,18 @@ func (g GCTLog) Debugf(_ interface{}, data string, v ...interface{}) {
 	log.Debug().Str("what", fmt.Sprintf(data, v...)).Msg(Location())
 }
 
+func (bot *Keep) LoadExchange(name string, wg *sync.WaitGroup) error {
+	return bot.loadExchange(name, wg, GCTLog{})
+}
+
 // +----------------------------+
 // | Copied from gocryptotrader |
 // +----------------------------+
 
 var (
-	ErrNoExchangesLoaded     = errors.New("no exchanges have been loaded")
-	ErrExchangeNotFound      = errors.New("exchange not found")
-	ErrExchangeAlreadyLoaded = errors.New("exchange already loaded")
-	ErrExchangeFailedToLoad  = errors.New("exchange failed to load")
+	ErrNoExchangesLoaded    = errors.New("no exchanges have been loaded")
+	ErrExchangeFailedToLoad = errors.New("exchange failed to load")
 )
-
-func (bot *Keep) LoadExchange(name string, wg *sync.WaitGroup) error {
-	return bot.loadExchange(name, wg, GCTLog{})
-}
 
 // loadExchange is an unchanged copy of Engine.LoadExchange.
 //

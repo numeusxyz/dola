@@ -86,7 +86,7 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error { // nolint: fun
 				Msg(Location())
 
 			if x.Err == nil {
-				panic("expected an error")
+				panic("unexpected an error")
 			}
 
 			return x.Err
@@ -97,23 +97,6 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error { // nolint: fun
 				Msg(Location())
 		case account.Change:
 			logError("OnBalanceChange", data, s.OnBalanceChange(k, e, x))
-		// case binance.wsAccountPosition:
-		//
-		// // Order filling is now supported just for FTX.
-		// // Support for other exchanges should be added
-		// // manually here.
-		// case ftx.WsFills:
-		// 	err = s.OnTrade(k, e, Trade{
-		// 		Timestamp:     x.Time,
-		// 		BaseCurrency:  x.BaseCurrency,
-		// 		QuoteCurrency: x.QuoteCurrency,
-		// 		OrderID:       strconv.FormatInt(x.OrderID, 10),
-		// 		AveragePrice:  x.Price,
-		// 		Quantity:      x.Size,
-		// 		Fee:           x.Fee,
-		// 		FeeCurrency:   x.FeeCurrency,
-		// 	})
-		// 	logError("OnTrade", data, err)
 		default:
 			log.Warn().
 				// Fields(map[string]interface{}{"data": data}).
@@ -123,6 +106,5 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error { // nolint: fun
 		}
 	}
 
-	// Unreachable since ws.ToRoutine NEVER gets closed.
-	panic("unexpected")
+	panic("unexpected end of channel")
 }
