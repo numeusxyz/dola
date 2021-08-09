@@ -106,7 +106,7 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 		case account.Change:
 			logError("OnBalanceChange", data, s.OnBalanceChange(k, e, x))
 		default:
-			log.Warn().
+			log.Debug().
 				// Fields(map[string]interface{}{"data": data}).
 				Str("type", fmt.Sprintf("%T", x)).
 				Str("what", "unknown type").
