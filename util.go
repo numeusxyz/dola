@@ -4,6 +4,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,8 +19,9 @@ func Location() string {
 	}
 
 	fn := runtime.FuncForPC(pc)
+	xs := strings.SplitAfterN(fn.Name(), "/", 3)
 
-	return fn.Name()
+	return xs[len(xs)-1]
 }
 
 // Location2 returns the name of the grandparent calling function.
@@ -30,8 +32,9 @@ func Location2() string {
 	}
 
 	fn := runtime.FuncForPC(pc)
+	xs := strings.SplitAfterN(fn.Name(), "/", 3)
 
-	return fn.Name()
+	return xs[len(xs)-1]
 }
 
 // +---------+
