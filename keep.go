@@ -32,6 +32,10 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 		}
 
 		path := filepath.Join(home, ".dola/config.json")
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			path = ""
+		}
+
 		settings.ConfigFile = path
 	}
 
