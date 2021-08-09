@@ -34,6 +34,7 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 
 		path := filepath.Join(home, ".dola/config.json")
 		if _, err := os.Stat(path); os.IsNotExist(err) {
+			log.Debug().Str("path", path).Str("what", "config file does not exist").Msg(Location())
 			path = ""
 		}
 
@@ -63,7 +64,29 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 
 func (bot *Keep) SubmitOrder(e exchange.IBotExchange, x order.Submit) error {
 	_, err := e.SubmitOrder(&x)
-	// TODO: Use response.
+	// TODO: Use response?
+	return err
+}
+
+func (bot *Keep) CancelOrder(e exchange.IBotExchange, x order.Cancel) error {
+	return e.CancelOrder(&x)
+}
+
+func (bot *Keep) CancelAllOrders(e exchange.IBotExchange, base, quote string) error {
+	symbol := fmt.Sprintf("%s/%s", base, quote)
+
+	pair, err := currency.NewPairDelimiter(symbol, "/")
+	if err != nil {
+		return err
+	}
+
+	_, err = e.CancelAllOrders(&order.Cancel{
+		Exchange:  e.GetName(),
+		AssetType: asset.Spot,
+		Pair:      pair,
+	})
+	// TODO: Use response?
+
 	return err
 }
 
