@@ -62,17 +62,15 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 	return keep, nil
 }
 
-func (bot *Keep) SubmitOrder(e exchange.IBotExchange, x order.Submit) error {
-	_, err := e.SubmitOrder(&x)
-	// TODO: Use response?
-	return err
+func (bot *Keep) SubmitOrder(e exchange.IBotExchange, x order.Submit) (order.SubmitResponse, error) {
+	return e.SubmitOrder(&x)
 }
 
 func (bot *Keep) CancelOrder(e exchange.IBotExchange, x order.Cancel) error {
 	return e.CancelOrder(&x)
 }
 
-func (bot *Keep) CancelAllOrders(e exchange.IBotExchange, base, quote string) error {
+func (bot *Keep) CancelAllOrders(e exchange.IBotExchange, assetType asset.Item, base, quote string) error {
 	symbol := fmt.Sprintf("%s/%s", base, quote)
 
 	pair, err := currency.NewPairDelimiter(symbol, "/")
@@ -82,7 +80,7 @@ func (bot *Keep) CancelAllOrders(e exchange.IBotExchange, base, quote string) er
 
 	_, err = e.CancelAllOrders(&order.Cancel{
 		Exchange:  e.GetName(),
-		AssetType: asset.Spot,
+		AssetType: assetType,
 		Pair:      pair,
 	})
 	// TODO: Use response?
