@@ -14,6 +14,7 @@ import (
 	"github.com/thrasher-corp/gocryptotrader/engine"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 )
 
 type Keep struct {
@@ -58,6 +59,12 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 	}
 
 	return keep, nil
+}
+
+func (bot *Keep) SubmitOrder(e exchange.IBotExchange, x order.Submit) error {
+	_, err := e.SubmitOrder(&x)
+	// TODO: Use response.
+	return err
 }
 
 func (bot *Keep) Run() {
