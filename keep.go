@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/rs/zerolog/log"
@@ -26,20 +26,7 @@ type Keep struct {
 }
 
 func NewKeep(settings engine.Settings) (*Keep, error) {
-	if settings.ConfigFile == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return &Keep{}, err
-		}
-
-		path := filepath.Join(home, ".dola/config.json")
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			log.Debug().Str("path", path).Str("what", "config file does not exist").Msg(Location())
-			path = ""
-		}
-
-		settings.ConfigFile = path
-	}
+	settings.ConfigFile = configFile(settings.ConfigFile)
 
 	keep := &Keep{
 		Settings:        settings,
@@ -51,6 +38,7 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 		return keep, err
 	}
 
+	log.Info().Str("path", filePath).Str("what", "loading config file").Msg(Location())
 	if err := keep.Config.ReadConfigFromFile(filePath, keep.Settings.EnableDryRun); err != nil {
 		return keep, err
 	}
@@ -105,6 +93,37 @@ func (bot *Keep) Run() {
 	}
 
 	wg.Wait()
+}
+
+func expandUser(path string) string {
+	return os.ExpandEnv(strings.Replace(path, "~", "$HOME", 1))
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return !os.IsNotExist(err)
+}
+
+func configFile(inp string) string {
+	if inp != "" {
+		path := expandUser(inp)
+		if fileExists(path) {
+			return path
+		}
+	}
+
+	if env := os.Getenv("DOLA_CONFIG"); env != "" {
+		path := expandUser(env)
+		if fileExists(path) {
+			return path
+		}
+	}
+
+	if path := expandUser("~/.dola/config.json"); fileExists(path) {
+		return path
+	}
+
+	return ""
 }
 
 // +-------------------------+
