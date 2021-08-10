@@ -2,7 +2,6 @@ package dola
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -36,7 +35,7 @@ type Trade struct {
 }
 
 type Strategy interface {
-	Init() error
+	Init(k *Keep, e exchange.IBotExchange) error
 	OnFunding(k *Keep, e exchange.IBotExchange, x stream.FundingData) error
 	OnPrice(k *Keep, e exchange.IBotExchange, x ticker.Price) error
 	OnKline(k *Keep, e exchange.IBotExchange, x stream.KlineData) error
@@ -44,7 +43,7 @@ type Strategy interface {
 	OnOrder(k *Keep, e exchange.IBotExchange, x order.Detail) error
 	OnModify(k *Keep, e exchange.IBotExchange, x order.Modify) error
 	OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error
-	Deinit() error
+	Deinit(k *Keep, e exchange.IBotExchange) error
 }
 
 // +---------+
@@ -56,10 +55,6 @@ type RootStrategy struct {
 }
 
 func (m *RootStrategy) Add(name string, s Strategy) error {
-	if err := s.Init(); err != nil {
-		return fmt.Errorf("Strategy.Init failed: %w", err)
-	}
-
 	if _, loaded := m.strategies.LoadOrStore(name, s); loaded {
 		return ErrStrategyAlreadyExists
 	}
@@ -67,15 +62,13 @@ func (m *RootStrategy) Add(name string, s Strategy) error {
 	return nil
 }
 
-func (m *RootStrategy) Delete(name string) error {
+func (m *RootStrategy) Delete(name string) (Strategy, error) {
 	x, ok := m.strategies.LoadAndDelete(name)
 	if !ok {
-		return ErrStrategyNotFound
+		return nil, ErrStrategyNotFound
 	}
 
-	s := x.(Strategy)
-
-	return s.Deinit()
+	return x.(Strategy), nil
 }
 
 // +------------------------------+
@@ -95,8 +88,8 @@ func (m *RootStrategy) each(f func(Strategy) error) error {
 	return err
 }
 
-func (m *RootStrategy) Init() error {
-	return m.each(func(s Strategy) error { return s.Init() })
+func (m *RootStrategy) Init(k *Keep, e exchange.IBotExchange) error {
+	return m.each(func(s Strategy) error { return s.Init(k, e) })
 }
 
 func (m *RootStrategy) OnFunding(k *Keep, e exchange.IBotExchange, x stream.FundingData) error {
@@ -127,6 +120,6 @@ func (m *RootStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x accou
 	return m.each(func(s Strategy) error { return s.OnBalanceChange(k, e, x) })
 }
 
-func (m *RootStrategy) Deinit() error {
-	return m.each(func(s Strategy) error { return s.Deinit() })
+func (m *RootStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
+	return m.each(func(s Strategy) error { return s.Deinit(k, e) })
 }

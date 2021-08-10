@@ -16,8 +16,12 @@ type DedicatedStrategy struct {
 	Wrapped  Strategy
 }
 
-func (d *DedicatedStrategy) Init() error {
-	return d.Wrapped.Init()
+func (d *DedicatedStrategy) Init(k *Keep, e exchange.IBotExchange) error {
+	if e.GetName() == d.Exchange {
+		return d.Wrapped.Init(k, e)
+	}
+
+	return nil
 }
 
 func (d *DedicatedStrategy) OnFunding(k *Keep, e exchange.IBotExchange, x stream.FundingData) error {
@@ -76,6 +80,10 @@ func (d *DedicatedStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x 
 	return nil
 }
 
-func (d *DedicatedStrategy) Deinit() error {
-	return d.Wrapped.Deinit()
+func (d *DedicatedStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
+	if e.GetName() == d.Exchange {
+		return d.Wrapped.Deinit(k, e)
+	}
+
+	return nil
 }

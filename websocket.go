@@ -64,6 +64,9 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 		return err
 	}
 
+	// Init strategy.
+	s.Init(k, e)
+
 	// This goroutine never, I repeat, *never* finishes.
 	for data := range ws.ToRoutine {
 		switch x := data.(type) {
@@ -113,6 +116,9 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 				Msg(Location())
 		}
 	}
+
+	// Deinit strategy.
+	s.Deinit(k, e)
 
 	panic("unexpected end of channel")
 }

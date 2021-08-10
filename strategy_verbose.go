@@ -17,8 +17,8 @@ type VerboseStrategy struct {
 	SilenceOrderBook bool
 }
 
-func (v VerboseStrategy) Init() error {
-	fmt.Println("VerboseStrategy.Init()")
+func (v VerboseStrategy) Init(k *Keep, e exchange.IBotExchange) error {
+	fmt.Printf("VerboseStrategy.Init(): e=%s\n", e.GetName())
 
 	return nil
 }
@@ -74,8 +74,8 @@ func (v VerboseStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x acc
 	return nil
 }
 
-func (v VerboseStrategy) Deinit() error {
-	fmt.Println("VerboseStrategy.OnDeinit()")
+func (v VerboseStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
+	fmt.Printf("VerboseStrategy.Deinit(): e=%s\n", e.GetName())
 
 	return nil
 }
