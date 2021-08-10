@@ -39,6 +39,7 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 	}
 
 	log.Info().Str("path", filePath).Str("what", "loading config file").Msg(Location())
+
 	if err := keep.Config.ReadConfigFromFile(filePath, keep.Settings.EnableDryRun); err != nil {
 		return keep, err
 	}
@@ -101,6 +102,7 @@ func expandUser(path string) string {
 
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
+
 	return !os.IsNotExist(err)
 }
 

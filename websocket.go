@@ -58,6 +58,8 @@ func openWebsocket(e exchange.IBotExchange) (*stream.Websocket, error) {
 
 // Stream resembles
 // github.com/thrasher-copr/gocryptotrader.engine.websocketRoutineManager.WebsocketDataHandler.
+//
+// nolint: funlen
 func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 	ws, err := openWebsocket(e)
 	if err != nil {
@@ -65,7 +67,9 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 	}
 
 	// Init strategy.
-	s.Init(k, e)
+	if err := s.Init(k, e); err != nil {
+		return err
+	}
 
 	// This goroutine never, I repeat, *never* finishes.
 	for data := range ws.ToRoutine {
@@ -118,7 +122,9 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 	}
 
 	// Deinit strategy.
-	s.Deinit(k, e)
+	if err := s.Deinit(k, e); err != nil {
+		return err
+	}
 
 	panic("unexpected end of channel")
 }
