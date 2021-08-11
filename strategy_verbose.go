@@ -2,7 +2,6 @@ package dola
 
 import (
 	"github.com/rs/zerolog/log"
-
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
