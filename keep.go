@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/thrasher-corp/gocryptotrader/common"
@@ -64,11 +65,23 @@ func (bot *Keep) CancelOrder(e exchange.IBotExchange, x order.Cancel) error {
 func (bot *Keep) CancelAllOrders(
 	e exchange.IBotExchange, assetType asset.Item, pair currency.Pair,
 ) (order.CancelAllResponse, error) {
-	// nolint: exhaustivestruct
 	return e.CancelAllOrders(&order.Cancel{
-		Exchange:  e.GetName(),
-		AssetType: assetType,
-		Pair:      pair,
+		Price:         0,
+		Amount:        0,
+		Exchange:      e.GetName(),
+		ID:            "",
+		ClientOrderID: "",
+		AccountID:     "",
+		ClientID:      "",
+		WalletAddress: "",
+		Type:          "",
+		Side:          "",
+		Status:        "",
+		AssetType:     assetType,
+		Date:          time.Time{},
+		Pair:          pair,
+		Symbol:        "",
+		Trades:        []order.TradeHistory{},
 	})
 }
 
