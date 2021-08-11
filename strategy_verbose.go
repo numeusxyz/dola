@@ -1,7 +1,7 @@
 package dola
 
 import (
-	"fmt"
+	"github.com/rs/zerolog/log"
 
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
@@ -18,20 +18,20 @@ type VerboseStrategy struct {
 }
 
 func (v VerboseStrategy) Init(k *Keep, e exchange.IBotExchange) error {
-	fmt.Printf("VerboseStrategy.Init(): e=%s\n", e.GetName())
+	log.Info().Str("e", e.GetName()).Msg(Location())
 
 	return nil
 }
 
 func (v VerboseStrategy) OnFunding(k *Keep, e exchange.IBotExchange, x stream.FundingData) error {
-	fmt.Printf("VerboseStrategy.OnFunding(): e=%s x=%v\n", e.GetName(), x)
+	log.Info().Str("e", e.GetName()).Interface("x", x).Msg(Location())
 
 	return nil
 }
 
 func (v VerboseStrategy) OnPrice(k *Keep, e exchange.IBotExchange, x ticker.Price) error {
 	if !v.SilencePrice {
-		fmt.Printf("VerboseStrategy.OnPrice(): e=%s, x=%v\n", e.GetName(), x)
+		log.Info().Str("e", e.GetName()).Interface("x", x).Msg(Location())
 	}
 
 	return nil
@@ -39,7 +39,7 @@ func (v VerboseStrategy) OnPrice(k *Keep, e exchange.IBotExchange, x ticker.Pric
 
 func (v VerboseStrategy) OnKline(k *Keep, e exchange.IBotExchange, x stream.KlineData) error {
 	if !v.SilenceKline {
-		fmt.Printf("VerboseStrategy.OnKline(): e=%s, x=%v\n", e.GetName(), x)
+		log.Info().Str("e", e.GetName()).Interface("x", x).Msg(Location())
 	}
 
 	return nil
@@ -47,35 +47,48 @@ func (v VerboseStrategy) OnKline(k *Keep, e exchange.IBotExchange, x stream.Klin
 
 func (v VerboseStrategy) OnOrderBook(k *Keep, e exchange.IBotExchange, x orderbook.Base) error {
 	if !v.SilenceOrderBook {
-		fmt.Printf(
-			"VerboseStrategy.OnOrderBook(): e=%s, x.Asks=%d x.Bids=%d ask=%f bid=%f\n",
-			e.GetName(), len(x.Asks), len(x.Bids), x.Asks[0].Price, x.Bids[0].Price,
-		)
+		ask := 0.0
+		if len(x.Asks) > 0 {
+			ask = x.Asks[0].Price
+		}
+
+		bid := 0.0
+		if len(x.Bids) > 0 {
+			bid = x.Bids[0].Price
+		}
+
+		log.Info().
+			Float64("ask", ask).
+			Float64("bid", bid).
+			Int("len(asks)", len(x.Asks)).
+			Int("len(bids", len(x.Bids)).
+			Str("e", e.GetName()).
+			Msg(Location())
 	}
 
 	return nil
 }
 
 func (v VerboseStrategy) OnOrder(k *Keep, e exchange.IBotExchange, x order.Detail) error {
-	fmt.Printf("VerboseStrategy.OnOrder(): e=%s, x=%v\n", e.GetName(), x)
+	log.Info().Str("e", e.GetName()).Interface("x", x).Msg(Location())
 
 	return nil
 }
 
 func (v VerboseStrategy) OnModify(k *Keep, e exchange.IBotExchange, x order.Modify) error {
-	fmt.Printf("VerboseStrategy.OnModify(): e=%s, x=%v\n", e.GetName(), x)
+	log.Info().Str("e", e.GetName()).Interface("x", x).Msg(Location())
 
 	return nil
 }
 
 func (v VerboseStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error {
-	fmt.Printf("VerboseStrategy.OnBalanceChange(): e=%s, x=%v\n", e.GetName(), x)
+	log.Info().Str("e", e.GetName()).Interface("x", x).Msg(Location())
 
 	return nil
 }
 
 func (v VerboseStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
-	fmt.Printf("VerboseStrategy.Deinit(): e=%s\n", e.GetName())
+	log.Info().Str("e", e.GetName()).Msg(Location())
 
 	return nil
 }

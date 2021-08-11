@@ -19,7 +19,7 @@ func Location() string {
 	}
 
 	fn := runtime.FuncForPC(pc)
-	xs := strings.SplitAfterN(fn.Name(), "/", 3)
+	xs := strings.SplitAfterN(fn.Name(), "/", 3) // nolint: gomnd
 
 	return xs[len(xs)-1]
 }
@@ -32,7 +32,7 @@ func Location2() string {
 	}
 
 	fn := runtime.FuncForPC(pc)
-	xs := strings.SplitAfterN(fn.Name(), "/", 3)
+	xs := strings.SplitAfterN(fn.Name(), "/", 3) // nolint: gomnd
 
 	return xs[len(xs)-1]
 }
@@ -50,7 +50,10 @@ type resourceChecker struct {
 }
 
 // nolint:gochecknoglobals
-var defaultResourceChecker = resourceChecker{resources: make(map[string]int)}
+var defaultResourceChecker = resourceChecker{
+	m:         sync.Mutex{},
+	resources: make(map[string]int),
+}
 
 func CheckerPush(xs ...string) {
 	var name string

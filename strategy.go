@@ -16,6 +16,7 @@ import (
 
 var (
 	ErrStrategyNotFound      = errors.New("strategy not found")
+	ErrNotStrategy           = errors.New("given object is not a strategy")
 	ErrStrategyAlreadyExists = errors.New("strategy already exists")
 )
 
@@ -54,6 +55,12 @@ type RootStrategy struct {
 	strategies sync.Map
 }
 
+func NewRootStrategy() *RootStrategy {
+	return &RootStrategy{
+		strategies: sync.Map{},
+	}
+}
+
 func (m *RootStrategy) Add(name string, s Strategy) error {
 	if _, loaded := m.strategies.LoadOrStore(name, s); loaded {
 		return ErrStrategyAlreadyExists
@@ -79,8 +86,12 @@ func (m *RootStrategy) each(f func(Strategy) error) error {
 	var err error
 
 	m.strategies.Range(func(key, value interface{}) bool {
-		s := value.(Strategy)
-		err = multierr.Append(err, f(s))
+		s, ok := value.(Strategy)
+		if !ok {
+			err = multierr.Append(err, ErrNotStrategy)
+		} else {
+			err = multierr.Append(err, f(s))
+		}
 
 		return true
 	})

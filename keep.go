@@ -29,7 +29,9 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 	settings.ConfigFile = configFile(settings.ConfigFile)
 
 	keep := &Keep{
+		Root:            *NewRootStrategy(),
 		Settings:        settings,
+		Config:          config.Config{}, // nolint: exhaustivestruct
 		ExchangeManager: *engine.SetupExchangeManager(),
 	}
 
@@ -44,7 +46,7 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 		return keep, err
 	}
 
-	if err := keep.setupExchanges(GCTLog{}); err != nil {
+	if err := keep.setupExchanges(GCTLog{nil}); err != nil {
 		return keep, err
 	}
 
@@ -59,7 +61,10 @@ func (bot *Keep) CancelOrder(e exchange.IBotExchange, x order.Cancel) error {
 	return e.CancelOrder(&x)
 }
 
-func (bot *Keep) CancelAllOrders(e exchange.IBotExchange, assetType asset.Item, pair currency.Pair) (order.CancelAllResponse, error) {
+func (bot *Keep) CancelAllOrders(
+	e exchange.IBotExchange, assetType asset.Item, pair currency.Pair,
+) (order.CancelAllResponse, error) {
+	// nolint: exhaustivestruct
 	return e.CancelAllOrders(&order.Cancel{
 		Exchange:  e.GetName(),
 		AssetType: assetType,
@@ -123,7 +128,7 @@ func configFile(inp string) string {
 // +-------------------------+
 
 type GCTLog struct {
-	ExchangeSys struct{}
+	ExchangeSys interface{}
 }
 
 func (g GCTLog) Warnf(_ interface{}, data string, v ...interface{}) {
@@ -139,7 +144,7 @@ func (g GCTLog) Debugf(_ interface{}, data string, v ...interface{}) {
 }
 
 func (bot *Keep) LoadExchange(name string, wg *sync.WaitGroup) error {
-	return bot.loadExchange(name, wg, GCTLog{})
+	return bot.loadExchange(name, wg, GCTLog{nil})
 }
 
 // +----------------------------+

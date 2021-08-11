@@ -59,7 +59,7 @@ func openWebsocket(e exchange.IBotExchange) (*stream.Websocket, error) {
 // Stream resembles
 // github.com/thrasher-copr/gocryptotrader.engine.websocketRoutineManager.WebsocketDataHandler.
 //
-// nolint: funlen
+// nolint: cyclop,funlen
 func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 	ws, err := openWebsocket(e)
 	if err != nil {

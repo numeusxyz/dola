@@ -1,4 +1,8 @@
 linters:
   enable-all: true
-  # disable:
-  #   - wsl
+  disable:
+    - golint
+    - interfacer
+    - scopelint
+    - maligned
+    - wrapcheck
