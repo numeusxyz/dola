@@ -1,4 +1,4 @@
-module github.com/ydm/dola
+module github.com/numus-digital/dola
 
 go 1.16
 

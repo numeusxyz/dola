@@ -46,7 +46,7 @@ package main
 
 import (
 	"github.com/thrasher-corp/gocryptotrader/engine"
-	"github.com/ydm/dola"
+	"github.com/numus-digital/dola"
 )
 
 func main() {
