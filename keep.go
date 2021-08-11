@@ -59,22 +59,12 @@ func (bot *Keep) CancelOrder(e exchange.IBotExchange, x order.Cancel) error {
 	return e.CancelOrder(&x)
 }
 
-func (bot *Keep) CancelAllOrders(e exchange.IBotExchange, assetType asset.Item, base, quote string) error {
-	symbol := fmt.Sprintf("%s/%s", base, quote)
-
-	pair, err := currency.NewPairDelimiter(symbol, "/")
-	if err != nil {
-		return err
-	}
-
-	_, err = e.CancelAllOrders(&order.Cancel{
+func (bot *Keep) CancelAllOrders(e exchange.IBotExchange, assetType asset.Item, pair currency.Pair) (order.CancelAllResponse, error) {
+	return e.CancelAllOrders(&order.Cancel{
 		Exchange:  e.GetName(),
 		AssetType: assetType,
 		Pair:      pair,
 	})
-	// TODO: Use response?
-
-	return err
 }
 
 func (bot *Keep) Run() {
