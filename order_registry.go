@@ -2,6 +2,7 @@ package dola
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 )
@@ -17,14 +18,17 @@ type OrderValue struct {
 }
 
 type OrderRegistry struct {
-	m sync.Map
+	m      sync.Map
+	Length int32
 }
 
 func NewOrderRegistry() OrderRegistry {
-	return OrderRegistry{sync.Map{}}
+	return OrderRegistry{sync.Map{}, 0}
 }
 
-func (r *OrderRegistry) OnSubmit(exchangeName string, response order.SubmitResponse, userData interface{}) {
+// OnSubmit saves order details.  If such an order exists (matched by exchange name and
+// order ID), false is returned.
+func (r *OrderRegistry) OnSubmit(exchangeName string, response order.SubmitResponse, userData interface{}) bool {
 	key := OrderKey{
 		ExchangeName: exchangeName,
 		OrderID:      response.OrderID,
@@ -33,7 +37,13 @@ func (r *OrderRegistry) OnSubmit(exchangeName string, response order.SubmitRespo
 		SubmitResponse: response,
 		UserData:       userData,
 	}
-	r.m.Store(key, value)
+	_, loaded := r.m.LoadOrStore(key, value)
+
+	if !loaded {
+		atomic.AddInt32(&r.Length, 1)
+	}
+
+	return !loaded
 }
 
 func (r *OrderRegistry) GetOrderValue(exchangeName, orderID string) (OrderValue, bool) {
@@ -47,4 +57,8 @@ func (r *OrderRegistry) GetOrderValue(exchangeName, orderID string) (OrderValue,
 	}
 
 	return OrderValue{}, false // nolint: exhaustivestruct
+}
+
+func (r *OrderRegistry) MapUnsafe() *sync.Map {
+	return &r.m
 }
