@@ -1,5 +1,8 @@
 top: test lint
 
+fix:
+	golangci-lint run --fix
+
 help:
 	@echo 'Management commands:'
 	@echo
