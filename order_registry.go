@@ -35,3 +35,16 @@ func (r *OrderRegistry) OnSubmit(exchangeName string, response order.SubmitRespo
 	}
 	r.m.Store(key, value)
 }
+
+func (r *OrderRegistry) GetOrderValue(exchangeName, orderID string) (OrderValue, bool) {
+	key := OrderKey{
+		ExchangeName: exchangeName,
+		OrderID:      orderID,
+	}
+
+	if p, ok := r.m.Load(key); ok {
+		return p.(OrderValue), ok
+	}
+
+	return OrderValue{}, false // nolint: exhaustivestruct
+}
