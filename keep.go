@@ -18,6 +18,8 @@ import (
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 )
 
+var ErrOrdersAlreadyExists = errors.New("order already exists")
+
 type Keep struct {
 	Root RootStrategy
 
@@ -73,8 +75,10 @@ func (bot *Keep) SubmitOrderUD(
 	// Do we want to generate a custom order ID in case x.ClientOrderID is empty?
 
 	resp, err := e.SubmitOrder(&submit)
-	if err != nil {
-		bot.Registry.OnSubmit(e.GetName(), resp, userData)
+	if err == nil {
+		if !bot.Registry.OnSubmit(e.GetName(), resp, userData) {
+			return resp, ErrOrdersAlreadyExists
+		}
 	}
 
 	return resp, err
