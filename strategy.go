@@ -55,8 +55,8 @@ type RootStrategy struct {
 	strategies sync.Map
 }
 
-func NewRootStrategy() *RootStrategy {
-	return &RootStrategy{
+func NewRootStrategy() RootStrategy {
+	return RootStrategy{
 		strategies: sync.Map{},
 	}
 }
