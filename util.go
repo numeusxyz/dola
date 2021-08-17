@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
 )
@@ -92,7 +93,7 @@ func CheckerPop(xs ...string) {
 
 // CheckerAssert should be defer-called in main().
 func CheckerAssert() {
-	log.Debug().Str("what", "Checking resources...").Msg(Location())
+	Msg(log.Debug(), "checking resources...", "")
 	time.Sleep(1 * time.Second)
 
 	defaultResourceChecker.m.Lock()
@@ -100,9 +101,23 @@ func CheckerAssert() {
 
 	for k, v := range defaultResourceChecker.resources {
 		if v != 0 {
-			log.Warn().Int("counter", v).Str("unit", k).Str("what", "Leaked resource").Msg(Location())
+			Msg(log.Warn().Int("counter", v).Str("unit", k), "leaked resource", "")
 		}
 	}
+}
+
+// +---------+
+// | Logging |
+// +---------+
+
+func Msg(e *zerolog.Event, what, code string) {
+	if what != "" {
+		e = e.Str("what", what)
+	}
+	if code != "" {
+		e = e.Str("code", code)
+	}
+	e.Msg(Location2())
 }
 
 // +----------+

@@ -20,12 +20,11 @@ var (
 
 func logError(method string, data interface{}, err error) {
 	if err != nil {
-		log.Warn().
+		Msg(log.Warn().
 			Err(err).
 			Str("method", method).
-			Str("type(data)", fmt.Sprintf("%T", data)).
-			Str("what", "method failedw").
-			Msg(Location2())
+			Str("type(data)", fmt.Sprintf("%T", data)),
+			"method failed", "")
 	}
 }
 
@@ -83,10 +82,7 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 	for data := range ws.ToRoutine {
 		switch x := data.(type) {
 		case string:
-			log.Warn().
-				Str("type", x).
-				Str("what", "unknown string").
-				Msg(Location())
+			Msg(log.Warn().Str("data", x).Str("type", fmt.Sprintf("%T", x)), "unhandled type", "")
 		case error:
 			return x
 		case stream.FundingData:
@@ -102,11 +98,7 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 		case *order.Modify:
 			logError("OnModify", data, s.OnModify(k, e, *x))
 		case order.ClassificationError:
-			log.Warn().
-				Str("exchange", x.Exchange).
-				Str("OrderID", x.OrderID).
-				Err(x.Err).
-				Msg(Location())
+			Msg(log.Warn().Interface("data", x).Str("type", fmt.Sprintf("%T", x)), "unhandled type", "")
 
 			if x.Err == nil {
 				panic("unexpected an error")
@@ -114,18 +106,11 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 
 			return x.Err
 		case stream.UnhandledMessageWarning:
-			log.Warn().
-				Str("message", x.Message).
-				Str("what", "unknown message").
-				Msg(Location())
+			Msg(log.Warn().Str("data", x.Message).Str("type", fmt.Sprintf("%T", x)), "unhandled type", "")
 		case account.Change:
 			logError("OnBalanceChange", data, s.OnBalanceChange(k, e, x))
 		default:
-			log.Debug().
-				// Fields(map[string]interface{}{"data": data}).
-				Str("type", fmt.Sprintf("%T", x)).
-				Str("what", "unknown type").
-				Msg(Location())
+			Msg(log.Debug().Interface("data", x).Str("type", fmt.Sprintf("%T", x)), "unhandled type", "")
 		}
 	}
 

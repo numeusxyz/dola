@@ -43,7 +43,7 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 		return keep, err
 	}
 
-	log.Info().Str("path", filePath).Str("what", "loading config file...").Msg(Location())
+	Msg(log.Info().Str("path", filePath), "loading config file...", "")
 
 	if err := keep.Config.ReadConfigFromFile(filePath, keep.Settings.EnableDryRun); err != nil {
 		return keep, err
@@ -202,15 +202,15 @@ type GCTLog struct {
 }
 
 func (g GCTLog) Warnf(_ interface{}, data string, v ...interface{}) {
-	log.Warn().Str("what", fmt.Sprintf(data, v...)).Msg(Location())
+	Msg(log.Warn(), fmt.Sprintf(data, v...), "")
 }
 
 func (g GCTLog) Errorf(_ interface{}, data string, v ...interface{}) {
-	log.Error().Str("what", fmt.Sprintf(data, v...)).Msg(Location())
+	Msg(log.Error(), fmt.Sprintf(data, v...), "")
 }
 
 func (g GCTLog) Debugf(_ interface{}, data string, v ...interface{}) {
-	log.Debug().Str("what", fmt.Sprintf(data, v...)).Msg(Location())
+	Msg(log.Debug(), fmt.Sprintf(data, v...), "")
 }
 
 func (bot *Keep) LoadExchange(name string, wg *sync.WaitGroup) error {
