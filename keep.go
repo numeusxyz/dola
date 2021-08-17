@@ -24,16 +24,18 @@ type Keep struct {
 	Settings        engine.Settings
 	Config          config.Config
 	ExchangeManager engine.ExchangeManager
+	Registry        OrderRegistry
 }
 
 func NewKeep(settings engine.Settings) (*Keep, error) {
 	settings.ConfigFile = configFile(settings.ConfigFile)
 
 	keep := &Keep{
-		Root:            *NewRootStrategy(),
+		Root:            NewRootStrategy(),
 		Settings:        settings,
 		Config:          config.Config{}, // nolint: exhaustivestruct
 		ExchangeManager: *engine.SetupExchangeManager(),
+		Registry:        NewOrderRegistry(),
 	}
 
 	filePath, err := config.GetAndMigrateDefaultPath(keep.Settings.ConfigFile)
@@ -41,7 +43,7 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 		return keep, err
 	}
 
-	log.Info().Str("path", filePath).Str("what", "loading config file").Msg(Location())
+	log.Info().Str("path", filePath).Str("what", "loading config file...").Msg(Location())
 
 	if err := keep.Config.ReadConfigFromFile(filePath, keep.Settings.EnableDryRun); err != nil {
 		return keep, err
@@ -54,8 +56,48 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 	return keep, nil
 }
 
-func (bot *Keep) SubmitOrder(e exchange.IBotExchange, x order.Submit) (order.SubmitResponse, error) {
-	return e.SubmitOrder(&x)
+func (bot *Keep) SubmitOrder(exchangeOrName interface{}, submit order.Submit) (order.SubmitResponse, error) {
+	return bot.SubmitOrderUD(exchangeOrName, submit, nil)
+}
+
+func (bot *Keep) SubmitOrderUD(
+	exchangeOrName interface{},
+	submit order.Submit,
+	userData interface{},
+) (order.SubmitResponse, error) {
+	e := bot.getExchange(exchangeOrName)
+
+	// Make sure order.Submit.Exchange is properly populated.
+	submit.Exchange = e.GetName()
+
+	// Do we want to generate a custom order ID in case x.ClientOrderID is empty?
+
+	resp, err := e.SubmitOrder(&submit)
+	if err != nil {
+		bot.Registry.OnSubmit(e.GetName(), resp, userData)
+	}
+
+	return resp, err
+}
+
+func (bot *Keep) SubmitOrders(e exchange.IBotExchange, xs ...order.Submit) error {
+	group := sync.WaitGroup{}
+	multi := NewMultiErr(nil)
+
+	for _, x := range xs {
+		group.Add(1)
+
+		go func(x order.Submit) {
+			defer group.Done()
+
+			_, err := bot.SubmitOrder(e, x)
+			multi.Append(err)
+		}(x)
+	}
+
+	group.Done()
+
+	return multi.Err()
 }
 
 func (bot *Keep) CancelOrder(e exchange.IBotExchange, x order.Cancel) error {
@@ -104,14 +146,19 @@ func (bot *Keep) Run() {
 	wg.Wait()
 }
 
-func expandUser(path string) string {
-	return os.ExpandEnv(strings.Replace(path, "~", "$HOME", 1))
+func (bot *Keep) GetOrderValue(exchangeName, orderID string) (OrderValue, bool) {
+	return bot.Registry.GetOrderValue(exchangeName, orderID)
 }
 
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-
-	return !os.IsNotExist(err)
+func (bot *Keep) getExchange(x interface{}) exchange.IBotExchange {
+	switch x := x.(type) {
+	case exchange.IBotExchange:
+		return x
+	case string:
+		return bot.ExchangeManager.GetExchangeByName(x)
+	default:
+		panic("exchangeOrName should be either an instance of exchange.IBotExchange or a string")
+	}
 }
 
 func configFile(inp string) string {
@@ -134,6 +181,16 @@ func configFile(inp string) string {
 	}
 
 	return ""
+}
+
+func expandUser(path string) string {
+	return os.ExpandEnv(strings.Replace(path, "~", "$HOME", 1))
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+
+	return !os.IsNotExist(err)
 }
 
 // +-------------------------+
