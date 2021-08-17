@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"go.uber.org/multierr"
 )
 
 // Location returns the name of the parent calling function.
@@ -102,6 +103,32 @@ func CheckerAssert() {
 			log.Warn().Int("counter", v).Str("unit", k).Str("what", "Leaked resource").Msg(Location())
 		}
 	}
+}
+
+// +----------+
+// | MultiErr |
+// +----------+
+
+type MultiErr struct {
+	err   error
+	mutex sync.Mutex
+}
+
+func NewMultiErr(initial error) *MultiErr {
+	return &MultiErr{
+		err:   initial,
+		mutex: sync.Mutex{},
+	}
+}
+
+func (m *MultiErr) Append(right error) {
+	m.mutex.Lock()
+	m.err = multierr.Append(m.err, right)
+	m.mutex.Unlock()
+}
+
+func (m *MultiErr) Err() error {
+	return m.err
 }
 
 // +----------+
