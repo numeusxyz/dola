@@ -19,6 +19,14 @@ var (
 )
 
 func logError(method string, data interface{}, err error) {
+	if err != nil {
+		log.Warn().
+			Err(err).
+			Str("method", method).
+			Str("type(data)", fmt.Sprintf("%T", data)).
+			Str("what", "method failedw").
+			Msg(Location2())
+	}
 }
 
 // openWebsocket resembles
