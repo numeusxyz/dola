@@ -3,7 +3,6 @@ package dola
 import (
 	"errors"
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/rs/zerolog/log"
@@ -27,7 +26,7 @@ type Keep struct {
 }
 
 func NewKeep(settings engine.Settings) (*Keep, error) {
-	settings.ConfigFile = configFile(settings.ConfigFile)
+	settings.ConfigFile = ConfigFile(settings.ConfigFile)
 
 	var conf config.Config
 
@@ -96,20 +95,24 @@ func (bot *Keep) SubmitOrders(e exchange.IBotExchange, xs ...order.Submit) error
 	return wg.Wait()
 }
 
-func (bot *Keep) CancelOrder(e exchange.IBotExchange, x order.Cancel) error {
+func (bot *Keep) CancelOrder(exchangeOrName interface{}, x order.Cancel) error {
+	e := bot.getExchange(exchangeOrName)
+
 	return e.CancelOrder(&x)
 }
 
-func (bot *Keep) CancelAllOrders(exch exchange.IBotExchange, assetType asset.Item, pair currency.Pair) (
+func (bot *Keep) CancelAllOrders(exchangeOrName interface{}, assetType asset.Item, pair currency.Pair) (
 	order.CancelAllResponse, error,
 ) {
+	e := bot.getExchange(exchangeOrName)
+
 	var cancel order.Cancel
-	cancel.Exchange = exch.GetName()
+	cancel.Exchange = e.GetName()
 	cancel.AssetType = assetType
 	cancel.Pair = pair
 	// cancel.Symbol = pair.String()
 
-	return exch.CancelAllOrders(&cancel)
+	return e.CancelAllOrders(&cancel)
 }
 
 func (bot *Keep) Run() {
@@ -122,6 +125,7 @@ func (bot *Keep) Run() {
 			defer wg.Done()
 
 			err := Stream(bot, x, &bot.Root)
+
 			// This function is never expected to return.  I'm panic()king
 			// just to maintain the invariant.
 			panic(err)
@@ -133,28 +137,6 @@ func (bot *Keep) Run() {
 
 func (bot *Keep) GetOrderValue(exchangeName, orderID string) (OrderValue, bool) {
 	return bot.registry.GetOrderValue(exchangeName, orderID)
-}
-
-func configFile(inp string) string {
-	if inp != "" {
-		path := ExpandUser(inp)
-		if FileExists(path) {
-			return path
-		}
-	}
-
-	if env := os.Getenv("DOLA_CONFIG"); env != "" {
-		path := ExpandUser(env)
-		if FileExists(path) {
-			return path
-		}
-	}
-
-	if path := ExpandUser("~/.dola/config.json"); FileExists(path) {
-		return path
-	}
-
-	return ""
 }
 
 func (bot *Keep) getExchange(x interface{}) exchange.IBotExchange {
