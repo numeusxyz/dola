@@ -19,12 +19,15 @@ type OrderValue struct {
 }
 
 type OrderRegistry struct {
-	m      sync.Map
 	length int32
+	values sync.Map
 }
 
-func NewOrderRegistry() OrderRegistry {
-	return OrderRegistry{sync.Map{}, 0}
+func NewOrderRegistry() *OrderRegistry {
+	return &OrderRegistry{
+		length: 0,
+		values: sync.Map{},
+	}
 }
 
 // Store saves order details.  If such an order exists
@@ -38,7 +41,7 @@ func (r *OrderRegistry) Store(exchangeName string, response order.SubmitResponse
 		SubmitResponse: response,
 		UserData:       userData,
 	}
-	_, loaded := r.m.LoadOrStore(key, value)
+	_, loaded := r.values.LoadOrStore(key, value)
 
 	if !loaded {
 		// If not loaded, then it's stored, so length++.
@@ -61,7 +64,7 @@ func (r *OrderRegistry) GetOrderValue(exchangeName, orderID string) (OrderValue,
 		value   OrderValue
 	)
 
-	if pointer, loaded = r.m.Load(key); loaded {
+	if pointer, loaded = r.values.Load(key); loaded {
 		value, ok = pointer.(OrderValue)
 		if !ok {
 			log.Fatalf("have %T, want OrderValue", pointer)
