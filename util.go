@@ -180,6 +180,28 @@ func (p Profiler) Stop() {
 // | Miscellaneous |
 // +---------------+
 
+func ConfigFile(inp string) string {
+	if inp != "" {
+		path := ExpandUser(inp)
+		if FileExists(path) {
+			return path
+		}
+	}
+
+	if env := os.Getenv("DOLA_CONFIG"); env != "" {
+		path := ExpandUser(env)
+		if FileExists(path) {
+			return path
+		}
+	}
+
+	if path := ExpandUser("~/.dola/config.json"); FileExists(path) {
+		return path
+	}
+
+	return ""
+}
+
 func ExpandUser(path string) string {
 	// Maybe this won't work on Windows, but do we care?
 	return os.ExpandEnv(strings.Replace(path, "~", "$HOME", 1))
