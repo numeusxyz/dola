@@ -101,7 +101,7 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 			Msg(log.Warn().Interface("data", x).Str("type", fmt.Sprintf("%T", x)), "unhandled type", "")
 
 			if x.Err == nil {
-				panic("unexpected an error")
+				panic("unexpected error")
 			}
 
 			return x.Err
