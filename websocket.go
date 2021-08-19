@@ -94,6 +94,7 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 		case *orderbook.Base:
 			handleError("OnOrderBook", data, s.OnOrderBook(k, e, *x))
 		case *order.Detail:
+			k.OnOrder(e, *x)
 			handleError("OnOrder", data, s.OnOrder(k, e, *x))
 		case *order.Modify:
 			handleError("OnModify", data, s.OnModify(k, e, *x))

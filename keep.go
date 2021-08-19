@@ -150,6 +150,25 @@ func (bot *Keep) getExchange(x interface{}) exchange.IBotExchange {
 	}
 }
 
+// +-------------------+
+// | Event observation |
+// +-------------------+
+
+func (bot *Keep) OnOrder(e exchange.IBotExchange, x order.Detail) {
+	switch x.Status {
+	case order.Filled:
+		value, ok := bot.GetOrderValue(e.GetName(), x.ID)
+		if !ok {
+			// No user data for this order.
+			return
+		}
+
+		if obs, ok := value.UserData.(OnFilledObserver); !ok {
+			obs.OnFilled(e, x)
+		}
+	}
+}
+
 // +-------------------------+
 // | GCT compatibility layer |
 // +-------------------------+
