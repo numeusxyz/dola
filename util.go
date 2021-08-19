@@ -116,14 +116,6 @@ type ErrorWaitGroup struct {
 	mutex sync.Mutex
 }
 
-func NewErrorWaitGroup(initial error) *ErrorWaitGroup {
-	return &ErrorWaitGroup{
-		err:   initial,
-		group: sync.WaitGroup{},
-		mutex: sync.Mutex{},
-	}
-}
-
 func (m *ErrorWaitGroup) Add(delta int) {
 	m.group.Add(delta)
 }
