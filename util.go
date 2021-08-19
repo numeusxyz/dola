@@ -106,22 +106,6 @@ func CheckerAssert() {
 	}
 }
 
-// +---------+
-// | Logging |
-// +---------+
-
-func Msg(e *zerolog.Event, what, code string) {
-	if what != "" {
-		e = e.Str("what", what)
-	}
-
-	if code != "" {
-		e = e.Str("code", code)
-	}
-
-	e.Msg(Location2())
-}
-
 // +----------------+
 // | ErrorWaitGroup |
 // +----------------+
@@ -154,6 +138,22 @@ func (m *ErrorWaitGroup) Done(right error) {
 func (m *ErrorWaitGroup) Wait() error {
 	m.group.Wait()
 	return m.err
+}
+
+// +---------+
+// | Logging |
+// +---------+
+
+func Msg(e *zerolog.Event, what, code string) {
+	if what != "" {
+		e = e.Str("what", what)
+	}
+
+	if code != "" {
+		e = e.Str("code", code)
+	}
+
+	e.Msg(Location2())
 }
 
 // +----------+
