@@ -23,6 +23,10 @@ type OrderRegistry struct {
 	length int32
 }
 
+func NewOrderRegistry() OrderRegistry {
+	return OrderRegistry{sync.Map{}, 0}
+}
+
 // Store saves order details.  If such an order exists
 // (matched by exchange name and order ID), false is returned.
 func (r *OrderRegistry) Store(exchangeName string, response order.SubmitResponse, userData interface{}) bool {
