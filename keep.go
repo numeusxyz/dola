@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/thrasher-corp/gocryptotrader/common"
@@ -62,11 +61,9 @@ func (bot *Keep) SubmitOrder(exchangeOrName interface{}, submit order.Submit) (o
 	return bot.SubmitOrderUD(exchangeOrName, submit, nil)
 }
 
-func (bot *Keep) SubmitOrderUD(
-	exchangeOrName interface{},
-	submit order.Submit,
-	userData interface{},
-) (order.SubmitResponse, error) {
+func (bot *Keep) SubmitOrderUD(exchangeOrName interface{}, submit order.Submit, userData interface{}) (
+	order.SubmitResponse, error,
+) {
 	e := bot.getExchange(exchangeOrName)
 
 	// Make sure order.Submit.Exchange is properly populated.
@@ -103,27 +100,16 @@ func (bot *Keep) CancelOrder(e exchange.IBotExchange, x order.Cancel) error {
 	return e.CancelOrder(&x)
 }
 
-func (bot *Keep) CancelAllOrders(
-	e exchange.IBotExchange, assetType asset.Item, pair currency.Pair,
-) (order.CancelAllResponse, error) {
-	return e.CancelAllOrders(&order.Cancel{
-		Price:         0,
-		Amount:        0,
-		Exchange:      e.GetName(),
-		ID:            "",
-		ClientOrderID: "",
-		AccountID:     "",
-		ClientID:      "",
-		WalletAddress: "",
-		Type:          "",
-		Side:          "",
-		Status:        "",
-		AssetType:     assetType,
-		Date:          time.Time{},
-		Pair:          pair,
-		Symbol:        "",
-		Trades:        []order.TradeHistory{},
-	})
+func (bot *Keep) CancelAllOrders(exch exchange.IBotExchange, assetType asset.Item, pair currency.Pair) (
+	order.CancelAllResponse, error,
+) {
+	var cancel order.Cancel
+	cancel.Exchange = exch.GetName()
+	cancel.AssetType = assetType
+	cancel.Pair = pair
+	// cancel.Symbol = pair.String()
+
+	return exch.CancelAllOrders(&cancel)
 }
 
 func (bot *Keep) Run() {
