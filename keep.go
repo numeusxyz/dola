@@ -20,25 +20,24 @@ import (
 var ErrOrdersAlreadyExists = errors.New("order already exists")
 
 type Keep struct {
-	Root RootStrategy
-
+	Root            RootStrategy
 	Settings        engine.Settings
 	Config          config.Config
 	ExchangeManager engine.ExchangeManager
-	Registry        OrderRegistry
+	registry        OrderRegistry
 }
 
 func NewKeep(settings engine.Settings) (*Keep, error) {
 	settings.ConfigFile = configFile(settings.ConfigFile)
 
-	var c config.Config
+	var conf config.Config
 
 	keep := &Keep{
 		Root:            NewRootStrategy(),
 		Settings:        settings,
-		Config:          c,
+		Config:          conf,
 		ExchangeManager: *engine.SetupExchangeManager(),
-		Registry:        NewOrderRegistry(),
+		registry:        *NewOrderRegistry(),
 	}
 
 	filePath, err := config.GetAndMigrateDefaultPath(keep.Settings.ConfigFile)
@@ -77,7 +76,7 @@ func (bot *Keep) SubmitOrderUD(
 
 	resp, err := e.SubmitOrder(&submit)
 	if err == nil {
-		if !bot.Registry.Store(e.GetName(), resp, userData) {
+		if !bot.registry.Store(e.GetName(), resp, userData) {
 			return resp, ErrOrdersAlreadyExists
 		}
 	}
@@ -147,7 +146,7 @@ func (bot *Keep) Run() {
 }
 
 func (bot *Keep) GetOrderValue(exchangeName, orderID string) (OrderValue, bool) {
-	return bot.Registry.GetOrderValue(exchangeName, orderID)
+	return bot.registry.GetOrderValue(exchangeName, orderID)
 }
 
 func configFile(inp string) string {
