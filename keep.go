@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -151,6 +150,28 @@ func (bot *Keep) GetOrderValue(exchangeName, orderID string) (OrderValue, bool) 
 	return bot.Registry.GetOrderValue(exchangeName, orderID)
 }
 
+func configFile(inp string) string {
+	if inp != "" {
+		path := ExpandUser(inp)
+		if FileExists(path) {
+			return path
+		}
+	}
+
+	if env := os.Getenv("DOLA_CONFIG"); env != "" {
+		path := ExpandUser(env)
+		if FileExists(path) {
+			return path
+		}
+	}
+
+	if path := ExpandUser("~/.dola/config.json"); FileExists(path) {
+		return path
+	}
+
+	return ""
+}
+
 func (bot *Keep) getExchange(x interface{}) exchange.IBotExchange {
 	switch x := x.(type) {
 	case exchange.IBotExchange:
@@ -160,38 +181,6 @@ func (bot *Keep) getExchange(x interface{}) exchange.IBotExchange {
 	default:
 		panic("exchangeOrName should be either an instance of exchange.IBotExchange or a string")
 	}
-}
-
-func configFile(inp string) string {
-	if inp != "" {
-		path := expandUser(inp)
-		if fileExists(path) {
-			return path
-		}
-	}
-
-	if env := os.Getenv("DOLA_CONFIG"); env != "" {
-		path := expandUser(env)
-		if fileExists(path) {
-			return path
-		}
-	}
-
-	if path := expandUser("~/.dola/config.json"); fileExists(path) {
-		return path
-	}
-
-	return ""
-}
-
-func expandUser(path string) string {
-	return os.ExpandEnv(strings.Replace(path, "~", "$HOME", 1))
-}
-
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-
-	return !os.IsNotExist(err)
 }
 
 // +-------------------------+

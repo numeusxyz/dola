@@ -175,3 +175,18 @@ func NewProfiler(filename string) Profiler {
 func (p Profiler) Stop() {
 	pprof.StopCPUProfile()
 }
+
+// +---------------+
+// | Miscellaneous |
+// +---------------+
+
+func ExpandUser(path string) string {
+	// Maybe this won't work on Windows, but do we care?
+	return os.ExpandEnv(strings.Replace(path, "~", "$HOME", 1))
+}
+
+func FileExists(path string) bool {
+	_, err := os.Stat(path)
+
+	return !os.IsNotExist(err)
+}
