@@ -32,10 +32,12 @@ type Keep struct {
 func NewKeep(settings engine.Settings) (*Keep, error) {
 	settings.ConfigFile = configFile(settings.ConfigFile)
 
+	var c config.Config
+
 	keep := &Keep{
 		Root:            NewRootStrategy(),
 		Settings:        settings,
-		Config:          config.Config{}, // nolint: exhaustivestruct
+		Config:          c,
 		ExchangeManager: *engine.SetupExchangeManager(),
 		Registry:        NewOrderRegistry(),
 	}
@@ -76,7 +78,7 @@ func (bot *Keep) SubmitOrderUD(
 
 	resp, err := e.SubmitOrder(&submit)
 	if err == nil {
-		if !bot.Registry.OnSubmit(e.GetName(), resp, userData) {
+		if !bot.Registry.Store(e.GetName(), resp, userData) {
 			return resp, ErrOrdersAlreadyExists
 		}
 	}
@@ -85,23 +87,18 @@ func (bot *Keep) SubmitOrderUD(
 }
 
 func (bot *Keep) SubmitOrders(e exchange.IBotExchange, xs ...order.Submit) error {
-	group := sync.WaitGroup{}
-	multi := NewMultiErr(nil)
+	var wg ErrorWaitGroup
 
 	for _, x := range xs {
-		group.Add(1)
+		wg.Add(1)
 
 		go func(x order.Submit) {
-			defer group.Done()
-
 			_, err := bot.SubmitOrder(e, x)
-			multi.Append(err)
+			wg.Done(err)
 		}(x)
 	}
 
-	group.Done()
-
-	return multi.Err()
+	return wg.Wait()
 }
 
 func (bot *Keep) CancelOrder(e exchange.IBotExchange, x order.Cancel) error {
