@@ -137,6 +137,7 @@ func (m *ErrorWaitGroup) Done(right error) {
 
 func (m *ErrorWaitGroup) Wait() error {
 	m.group.Wait()
+
 	return m.err
 }
 
