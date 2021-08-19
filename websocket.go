@@ -18,7 +18,7 @@ var (
 	ErrWebsocketNotEnabled   = errors.New("websocket is not enabled")
 )
 
-func logError(method string, data interface{}, err error) {
+func handleError(method string, data interface{}, err error) {
 	if err != nil {
 		Msg(log.Warn().
 			Err(err).
@@ -86,17 +86,17 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 		case error:
 			return x
 		case stream.FundingData:
-			logError("OnFunding", data, s.OnFunding(k, e, x))
+			handleError("OnFunding", data, s.OnFunding(k, e, x))
 		case *ticker.Price:
-			logError("OnPrice", data, s.OnPrice(k, e, *x))
+			handleError("OnPrice", data, s.OnPrice(k, e, *x))
 		case stream.KlineData:
-			logError("OnKline", data, s.OnKline(k, e, x))
+			handleError("OnKline", data, s.OnKline(k, e, x))
 		case *orderbook.Base:
-			logError("OnOrderBook", data, s.OnOrderBook(k, e, *x))
+			handleError("OnOrderBook", data, s.OnOrderBook(k, e, *x))
 		case *order.Detail:
-			logError("OnOrder", data, s.OnOrder(k, e, *x))
+			handleError("OnOrder", data, s.OnOrder(k, e, *x))
 		case *order.Modify:
-			logError("OnModify", data, s.OnModify(k, e, *x))
+			handleError("OnModify", data, s.OnModify(k, e, *x))
 		case order.ClassificationError:
 			Msg(log.Warn().Interface("data", x).Str("type", fmt.Sprintf("%T", x)), "unhandled type", "")
 
@@ -108,7 +108,7 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 		case stream.UnhandledMessageWarning:
 			Msg(log.Warn().Str("data", x.Message).Str("type", fmt.Sprintf("%T", x)), "unhandled type", "")
 		case account.Change:
-			logError("OnBalanceChange", data, s.OnBalanceChange(k, e, x))
+			handleError("OnBalanceChange", data, s.OnBalanceChange(k, e, x))
 		default:
 			Msg(log.Debug().Interface("data", x).Str("type", fmt.Sprintf("%T", x)), "unhandled type", "")
 		}
