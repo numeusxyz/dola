@@ -122,29 +122,37 @@ func Msg(e *zerolog.Event, what, code string) {
 	e.Msg(Location2())
 }
 
-// +----------+
-// | MultiErr |
-// +----------+
+// +----------------+
+// | ErrorWaitGroup |
+// +----------------+
 
-type MultiErr struct {
+type ErrorWaitGroup struct {
 	err   error
+	group sync.WaitGroup
 	mutex sync.Mutex
 }
 
-func NewMultiErr(initial error) *MultiErr {
-	return &MultiErr{
+func NewErrorWaitGroup(initial error) *ErrorWaitGroup {
+	return &ErrorWaitGroup{
 		err:   initial,
+		group: sync.WaitGroup{},
 		mutex: sync.Mutex{},
 	}
 }
 
-func (m *MultiErr) Append(right error) {
+func (m *ErrorWaitGroup) Add(delta int) {
+	m.group.Add(delta)
+}
+
+func (m *ErrorWaitGroup) Done(right error) {
 	m.mutex.Lock()
 	m.err = multierr.Append(m.err, right)
 	m.mutex.Unlock()
+	m.group.Done()
 }
 
-func (m *MultiErr) Err() error {
+func (m *ErrorWaitGroup) Wait() error {
+	m.group.Wait()
 	return m.err
 }
 
