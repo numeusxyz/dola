@@ -1,6 +1,7 @@
 package dola
 
 import (
+	"log"
 	"sync"
 	"sync/atomic"
 
@@ -19,16 +20,16 @@ type OrderValue struct {
 
 type OrderRegistry struct {
 	m      sync.Map
-	Length int32
+	length int32
 }
 
 func NewOrderRegistry() OrderRegistry {
 	return OrderRegistry{sync.Map{}, 0}
 }
 
-// OnSubmit saves order details.  If such an order exists (matched by exchange name and
-// order ID), false is returned.
-func (r *OrderRegistry) OnSubmit(exchangeName string, response order.SubmitResponse, userData interface{}) bool {
+// Store saves order details.  If such an order exists
+// (matched by exchange name and order ID), false is returned.
+func (r *OrderRegistry) Store(exchangeName string, response order.SubmitResponse, userData interface{}) bool {
 	key := OrderKey{
 		ExchangeName: exchangeName,
 		OrderID:      response.OrderID,
@@ -40,7 +41,8 @@ func (r *OrderRegistry) OnSubmit(exchangeName string, response order.SubmitRespo
 	_, loaded := r.m.LoadOrStore(key, value)
 
 	if !loaded {
-		atomic.AddInt32(&r.Length, 1)
+		// If not loaded, then it's stored, so length++.
+		atomic.AddInt32(&r.length, 1)
 	}
 
 	return !loaded
@@ -52,13 +54,23 @@ func (r *OrderRegistry) GetOrderValue(exchangeName, orderID string) (OrderValue,
 		OrderID:      orderID,
 	}
 
-	if p, ok := r.m.Load(key); ok {
-		return p.(OrderValue), ok
+	var (
+		loaded  bool
+		ok      bool
+		pointer interface{}
+		value   OrderValue
+	)
+
+	if pointer, loaded = r.m.Load(key); loaded {
+		value, ok = pointer.(OrderValue)
+		if !ok {
+			log.Fatalf("have %T, want OrderValue", pointer)
+		}
 	}
 
-	return OrderValue{}, false // nolint: exhaustivestruct
+	return value, loaded
 }
 
-func (r *OrderRegistry) MapUnsafe() *sync.Map {
-	return &r.m
+func (r *OrderRegistry) Length() int {
+	return int(atomic.LoadInt32(&r.length))
 }
