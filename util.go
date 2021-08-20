@@ -93,7 +93,7 @@ func CheckerPop(xs ...string) {
 
 // CheckerAssert should be defer-called in main().
 func CheckerAssert() {
-	Msg(log.Debug(), "checking resources...", "")
+	What(log.Debug(), "checking resources...")
 	time.Sleep(1 * time.Second)
 
 	defaultResourceChecker.m.Lock()
@@ -101,7 +101,7 @@ func CheckerAssert() {
 
 	for k, v := range defaultResourceChecker.resources {
 		if v != 0 {
-			Msg(log.Warn().Int("counter", v).Str("unit", k), "leaked resource", "")
+			What(log.Warn().Int("counter", v).Str("unit", k), "leaked resource")
 		}
 	}
 }
@@ -137,15 +137,23 @@ func (m *ErrorWaitGroup) Wait() error {
 // | Logging |
 // +---------+
 
-func Msg(e *zerolog.Event, what, code string) {
-	if what != "" {
-		e = e.Str("what", what)
-	}
-
+func Code(e *zerolog.Event, code string) {
 	if code != "" {
 		e = e.Str("code", code)
 	}
 
+	e.Msg(Location2())
+}
+
+func What(e *zerolog.Event, what string) {
+	if what != "" {
+		e = e.Str("what", what)
+	}
+
+	e.Msg(Location2())
+}
+
+func Msg(e *zerolog.Event) {
 	e.Msg(Location2())
 }
 
