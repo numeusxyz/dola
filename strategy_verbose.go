@@ -60,7 +60,7 @@ func (v VerboseStrategy) OnOrderBook(k *Keep, e exchange.IBotExchange, x orderbo
 			Float64("ask", ask).
 			Float64("bid", bid).
 			Int("len(asks)", len(x.Asks)).
-			Int("len(bids", len(x.Bids)).
+			Int("len(bids)", len(x.Bids)).
 			Str("e", e.GetName()),
 			"", "")
 	}
