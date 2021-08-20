@@ -43,7 +43,7 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 		return keep, err
 	}
 
-	Msg(log.Info().Str("path", filePath), "loading config file...", "")
+	What(log.Info().Str("path", filePath), "loading config file...")
 
 	if err := keep.Config.ReadConfigFromFile(filePath, keep.Settings.EnableDryRun); err != nil {
 		return keep, err
@@ -163,8 +163,8 @@ func (bot *Keep) OnOrder(e exchange.IBotExchange, x order.Detail) {
 			return
 		}
 
-		if obs, ok := value.UserData.(OnFilledObserver); !ok {
-			obs.OnFilled(e, x)
+		if obs, ok := value.UserData.(OnFilledObserver); ok {
+			obs.OnFilled(bot, e, x)
 		}
 	}
 }
@@ -178,15 +178,15 @@ type GCTLog struct {
 }
 
 func (g GCTLog) Warnf(_ interface{}, data string, v ...interface{}) {
-	Msg(log.Warn(), fmt.Sprintf(data, v...), "")
+	What(log.Warn(), fmt.Sprintf(data, v...))
 }
 
 func (g GCTLog) Errorf(_ interface{}, data string, v ...interface{}) {
-	Msg(log.Error(), fmt.Sprintf(data, v...), "")
+	What(log.Error(), fmt.Sprintf(data, v...))
 }
 
 func (g GCTLog) Debugf(_ interface{}, data string, v ...interface{}) {
-	Msg(log.Debug(), fmt.Sprintf(data, v...), "")
+	What(log.Debug(), fmt.Sprintf(data, v...))
 }
 
 func (bot *Keep) LoadExchange(name string, wg *sync.WaitGroup) error {

@@ -20,11 +20,11 @@ var (
 
 func handleError(method string, data interface{}, err error) {
 	if err != nil {
-		Msg(log.Warn().
+		What(log.Warn().
 			Err(err).
 			Str("method", method).
 			Str("type(data)", fmt.Sprintf("%T", data)),
-			"method failed", "")
+			"method failed")
 	}
 }
 
@@ -82,7 +82,7 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 	for data := range ws.ToRoutine {
 		switch x := data.(type) {
 		case string:
-			Msg(log.Warn().Str("data", x).Str("type", fmt.Sprintf("%T", x)), "unhandled type", "")
+			What(log.Warn().Str("data", x).Str("type", fmt.Sprintf("%T", x)), "unhandled type")
 		case error:
 			return x
 		case stream.FundingData:
@@ -99,7 +99,7 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 		case *order.Modify:
 			handleError("OnModify", data, s.OnModify(k, e, *x))
 		case order.ClassificationError:
-			Msg(log.Warn().Interface("data", x).Str("type", fmt.Sprintf("%T", x)), "unhandled type", "")
+			What(log.Warn().Interface("data", x).Str("type", fmt.Sprintf("%T", x)), "unhandled type")
 
 			if x.Err == nil {
 				panic("unexpected error")
@@ -107,11 +107,11 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 
 			return x.Err
 		case stream.UnhandledMessageWarning:
-			Msg(log.Warn().Str("data", x.Message).Str("type", fmt.Sprintf("%T", x)), "unhandled type", "")
+			What(log.Warn().Str("data", x.Message).Str("type", fmt.Sprintf("%T", x)), "unhandled type")
 		case account.Change:
 			handleError("OnBalanceChange", data, s.OnBalanceChange(k, e, x))
 		default:
-			Msg(log.Debug().Interface("data", x).Str("type", fmt.Sprintf("%T", x)), "unhandled type", "")
+			What(log.Debug().Interface("data", x).Str("type", fmt.Sprintf("%T", x)), "unhandled type")
 		}
 	}
 

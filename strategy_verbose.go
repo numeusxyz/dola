@@ -17,20 +17,20 @@ type VerboseStrategy struct {
 }
 
 func (v VerboseStrategy) Init(k *Keep, e exchange.IBotExchange) error {
-	Msg(log.Info().Str("e", e.GetName()), "", "")
+	Msg(log.Info().Str("e", e.GetName()))
 
 	return nil
 }
 
 func (v VerboseStrategy) OnFunding(k *Keep, e exchange.IBotExchange, x stream.FundingData) error {
-	Msg(log.Info().Str("e", e.GetName()).Interface("x", x), "", "")
+	Msg(log.Info().Str("e", e.GetName()).Interface("x", x))
 
 	return nil
 }
 
 func (v VerboseStrategy) OnPrice(k *Keep, e exchange.IBotExchange, x ticker.Price) error {
 	if !v.SilencePrice {
-		Msg(log.Info().Str("e", e.GetName()).Interface("x", x), "", "")
+		Msg(log.Info().Str("e", e.GetName()).Interface("x", x))
 	}
 
 	return nil
@@ -38,7 +38,7 @@ func (v VerboseStrategy) OnPrice(k *Keep, e exchange.IBotExchange, x ticker.Pric
 
 func (v VerboseStrategy) OnKline(k *Keep, e exchange.IBotExchange, x stream.KlineData) error {
 	if !v.SilenceKline {
-		Msg(log.Info().Str("e", e.GetName()).Interface("x", x), "", "")
+		Msg(log.Info().Str("e", e.GetName()).Interface("x", x))
 	}
 
 	return nil
@@ -61,33 +61,32 @@ func (v VerboseStrategy) OnOrderBook(k *Keep, e exchange.IBotExchange, x orderbo
 			Float64("bid", bid).
 			Int("len(asks)", len(x.Asks)).
 			Int("len(bids)", len(x.Bids)).
-			Str("e", e.GetName()),
-			"", "")
+			Str("e", e.GetName()))
 	}
 
 	return nil
 }
 
 func (v VerboseStrategy) OnOrder(k *Keep, e exchange.IBotExchange, x order.Detail) error {
-	Msg(log.Info().Str("e", e.GetName()).Interface("x", x), "", "")
+	Msg(log.Info().Str("e", e.GetName()).Interface("x", x))
 
 	return nil
 }
 
 func (v VerboseStrategy) OnModify(k *Keep, e exchange.IBotExchange, x order.Modify) error {
-	Msg(log.Info().Str("e", e.GetName()).Interface("x", x), "", "")
+	Msg(log.Info().Str("e", e.GetName()).Interface("x", x))
 
 	return nil
 }
 
 func (v VerboseStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error {
-	Msg(log.Info().Str("e", e.GetName()).Interface("x", x), "", "")
+	Msg(log.Info().Str("e", e.GetName()).Interface("x", x))
 
 	return nil
 }
 
 func (v VerboseStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
-	Msg(log.Info().Str("e", e.GetName()), "", "")
+	Msg(log.Info().Str("e", e.GetName()))
 
 	return nil
 }
