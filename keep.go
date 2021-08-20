@@ -155,8 +155,7 @@ func (bot *Keep) getExchange(x interface{}) exchange.IBotExchange {
 // +-------------------+
 
 func (bot *Keep) OnOrder(e exchange.IBotExchange, x order.Detail) {
-	switch x.Status {
-	case order.Filled:
+	if x.Status == order.Filled {
 		value, ok := bot.GetOrderValue(e.GetName(), x.ID)
 		if !ok {
 			// No user data for this order.
