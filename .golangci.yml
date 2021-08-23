@@ -1,9 +1,9 @@
 linters:
   enable-all: true
   disable:
-    - golint
-    - interfacer
-    - scopelint
-    - maligned
+    - golint                    # deprecated
+    - interfacer                # deprecated
+    - scopelint                 # deprecated
+    - maligned                  # deprecated
+    - gomoddirectives           # doesn't work with 1.17
     - wrapcheck                 # TODO
-    - gomoddirectives           # TODO
