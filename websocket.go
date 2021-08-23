@@ -45,6 +45,8 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 }
 
 // handleData resembles github.com/thrasher-corp/gocryptotrader.engine.websocketRoutineManager.WebsocketDataHandler.
+//
+//nolint:cyclop
 func handleData(k *Keep, e exchange.IBotExchange, s Strategy, data interface{}) error {
 	switch x := data.(type) {
 	case string:
