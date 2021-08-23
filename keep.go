@@ -329,12 +329,15 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 	return nil
 }
 
-// setupExchanges is an unchanged copy of Engine.SetupExchanges.
+// setupExchanges is an (almost) unchanged copy of Engine.SetupExchanges.
 //
 // nolint
 func (bot *Keep) setupExchanges(gctlog GCTLog) error {
 	var wg sync.WaitGroup
 	configs := bot.Config.GetAllExchangeConfigs()
+
+	// DELETED: parameters -> dryRun...()
+
 	for x := range configs {
 		if !configs[x].Enabled && !bot.Settings.EnableAllExchanges {
 			gctlog.Debugf(gctlog.ExchangeSys, "%s: Exchange support: Disabled\n", configs[x].Name)

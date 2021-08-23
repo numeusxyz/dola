@@ -95,8 +95,6 @@ func handleError(method string, data interface{}, err error) {
 	}
 }
 
-// openWebsocket resembles
-// github.com/thrasher-copr/gocryptotrader.engine.websocketRoutineManager.websocketRoutine.
 func openWebsocket(e exchange.IBotExchange) (*stream.Websocket, error) {
 	// Check whether websocket is enabled.
 	if !e.IsWebsocketEnabled() {
