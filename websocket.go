@@ -18,10 +18,6 @@ var (
 	ErrWebsocketNotEnabled   = errors.New("websocket is not enabled")
 )
 
-// Stream resembles
-// github.com/thrasher-corp/gocryptotrader.engine.websocketRoutineManager.WebsocketDataHandler.
-//
-// nolint: cyclop
 func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 	ws, err := openWebsocket(e)
 	if err != nil {
@@ -35,38 +31,8 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 
 	// This goroutine never, I repeat, *never* finishes.
 	for data := range ws.ToRoutine {
-		switch x := data.(type) {
-		case string:
-			What(log.Warn().Str("data", x).Str("type", fmt.Sprintf("%T", x)), "unhandled type")
-		case error:
-			return x
-		case stream.FundingData:
-			handleError("OnFunding", data, s.OnFunding(k, e, x))
-		case *ticker.Price:
-			handleError("OnPrice", data, s.OnPrice(k, e, *x))
-		case stream.KlineData:
-			handleError("OnKline", data, s.OnKline(k, e, x))
-		case *orderbook.Base:
-			handleError("OnOrderBook", data, s.OnOrderBook(k, e, *x))
-		case *order.Detail:
-			k.OnOrder(e, *x)
-			handleError("OnOrder", data, s.OnOrder(k, e, *x))
-		case *order.Modify:
-			handleError("OnModify", data, s.OnModify(k, e, *x))
-		case order.ClassificationError:
-			What(log.Warn().Interface("data", x).Str("type", fmt.Sprintf("%T", x)), "unhandled type")
-
-			if x.Err == nil {
-				panic("unexpected error")
-			}
-
-			return x.Err
-		case stream.UnhandledMessageWarning:
-			What(log.Warn().Str("data", x.Message).Str("type", fmt.Sprintf("%T", x)), "unhandled type")
-		case account.Change:
-			handleError("OnBalanceChange", data, s.OnBalanceChange(k, e, x))
-		default:
-			What(log.Debug().Interface("data", x).Str("type", fmt.Sprintf("%T", x)), "unhandled type")
+		if err := handleData(k, e, s, data); err != nil {
+			return err
 		}
 	}
 
@@ -78,7 +44,43 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 	panic("unexpected end of channel")
 }
 
-func handleData() {
+// handleData resembles github.com/thrasher-corp/gocryptotrader.engine.websocketRoutineManager.WebsocketDataHandler.
+func handleData(k *Keep, e exchange.IBotExchange, s Strategy, data interface{}) error {
+	switch x := data.(type) {
+	case string:
+		unhandledType(data, true)
+	case error:
+		return x
+	case stream.FundingData:
+		handleError("OnFunding", data, s.OnFunding(k, e, x))
+	case *ticker.Price:
+		handleError("OnPrice", data, s.OnPrice(k, e, *x))
+	case stream.KlineData:
+		handleError("OnKline", data, s.OnKline(k, e, x))
+	case *orderbook.Base:
+		handleError("OnOrderBook", data, s.OnOrderBook(k, e, *x))
+	case *order.Detail:
+		k.OnOrder(e, *x)
+		handleError("OnOrder", data, s.OnOrder(k, e, *x))
+	case *order.Modify:
+		handleError("OnModify", data, s.OnModify(k, e, *x))
+	case order.ClassificationError:
+		unhandledType(data, true)
+
+		if x.Err == nil {
+			panic("unexpected error")
+		}
+
+		return x.Err
+	case stream.UnhandledMessageWarning:
+		unhandledType(data, true)
+	case account.Change:
+		handleError("OnBalanceChange", data, s.OnBalanceChange(k, e, x))
+	default:
+		unhandledType(data, false)
+	}
+
+	return nil
 }
 
 func handleError(method string, data interface{}, err error) {
@@ -124,4 +126,17 @@ func openWebsocket(e exchange.IBotExchange) (*stream.Websocket, error) {
 	}
 
 	return ws, nil
+}
+
+func unhandledType(data interface{}, warn bool) {
+	e := log.Debug()
+
+	if warn {
+		e = log.Warn()
+	}
+
+	t := fmt.Sprintf("%T", data)
+	e = e.Interface("data", data).Str("type", t)
+
+	What(e, "unhandled type")
 }
