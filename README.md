@@ -5,7 +5,7 @@
 
 Dola is a cryptocurrency trading library that provides:
 
-* exchange integrations (via [github.com/thrasher-corp/gocryptotrader](https://github.com/thrasher-corp/gocryptotrader)),
+* exchanges integration (via [github.com/thrasher-corp/gocryptotrader](https://github.com/thrasher-corp/gocryptotrader)),
 * event-driven strategies,
 * utilities and more.
 
@@ -27,15 +27,15 @@ one exchange (out of many), take a look at `DedicatedStrategy`.
 
 ```go
 type Strategy interface {
-	Init(e exchange.IBotExchange) error
-	OnFunding(e exchange.IBotExchange, x stream.FundingData) error
-	OnPrice(e exchange.IBotExchange, x ticker.Price) error
-	OnKline(e exchange.IBotExchange, x stream.KlineData) error
-	OnOrderBook(e exchange.IBotExchange, x orderbook.Base) error
-	OnOrder(e exchange.IBotExchange, x order.Detail) error
-	OnModify(e exchange.IBotExchange, x order.Modify) error
-	OnBalanceChange(e exchange.IBotExchange, x account.Change) error
-	Deinit(e exchange.IBotExchange) error
+	Init(k *Keep, e exchange.IBotExchange) error
+	OnFunding(k *Keep, e exchange.IBotExchange, x stream.FundingData) error
+	OnPrice(k *Keep, e exchange.IBotExchange, x ticker.Price) error
+	OnKline(k *Keep, e exchange.IBotExchange, x stream.KlineData) error
+	OnOrderBook(k *Keep, e exchange.IBotExchange, x orderbook.Base) error
+	OnOrder(k *Keep, e exchange.IBotExchange, x order.Detail) error
+	OnModify(k *Keep, e exchange.IBotExchange, x order.Modify) error
+	OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error
+	Deinit(k *Keep, e exchange.IBotExchange) error
 }
 ```
 
