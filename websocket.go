@@ -18,51 +18,6 @@ var (
 	ErrWebsocketNotEnabled   = errors.New("websocket is not enabled")
 )
 
-func handleError(method string, data interface{}, err error) {
-	if err != nil {
-		What(log.Warn().
-			Err(err).
-			Str("method", method).
-			Str("type(data)", fmt.Sprintf("%T", data)),
-			"method failed")
-	}
-}
-
-// openWebsocket resembles
-// github.com/thrasher-copr/gocryptotrader.engine.websocketRoutineManager.websocketRoutine.
-func openWebsocket(e exchange.IBotExchange) (*stream.Websocket, error) {
-	// Check whether websocket is enabled.
-	if !e.IsWebsocketEnabled() {
-		return nil, ErrWebsocketNotEnabled
-	}
-
-	// Check whether websocket is supported.
-	if !e.SupportsWebsocket() {
-		return nil, ErrWebsocketNotSupported
-	}
-
-	// Instantiate a websocket.
-	ws, err := e.GetWebsocket()
-	if err != nil {
-		return nil, err
-	}
-
-	// Connect.
-	if !ws.IsConnecting() && !ws.IsConnected() {
-		err = ws.Connect()
-		if err != nil {
-			return nil, err
-		}
-
-		err = ws.FlushChannels()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return ws, nil
-}
-
 // Stream resembles
 // github.com/thrasher-corp/gocryptotrader.engine.websocketRoutineManager.WebsocketDataHandler.
 //
@@ -121,4 +76,52 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 	}
 
 	panic("unexpected end of channel")
+}
+
+func handleData() {
+}
+
+func handleError(method string, data interface{}, err error) {
+	if err != nil {
+		What(log.Warn().
+			Err(err).
+			Str("method", method).
+			Str("type(data)", fmt.Sprintf("%T", data)),
+			"method failed")
+	}
+}
+
+// openWebsocket resembles
+// github.com/thrasher-copr/gocryptotrader.engine.websocketRoutineManager.websocketRoutine.
+func openWebsocket(e exchange.IBotExchange) (*stream.Websocket, error) {
+	// Check whether websocket is enabled.
+	if !e.IsWebsocketEnabled() {
+		return nil, ErrWebsocketNotEnabled
+	}
+
+	// Check whether websocket is supported.
+	if !e.SupportsWebsocket() {
+		return nil, ErrWebsocketNotSupported
+	}
+
+	// Instantiate a websocket.
+	ws, err := e.GetWebsocket()
+	if err != nil {
+		return nil, err
+	}
+
+	// Connect.
+	if !ws.IsConnecting() && !ws.IsConnected() {
+		err = ws.Connect()
+		if err != nil {
+			return nil, err
+		}
+
+		err = ws.FlushChannels()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return ws, nil
 }
