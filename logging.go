@@ -13,17 +13,16 @@ import (
 // +----------+
 
 const (
-	// In dormant mode the StatefulLogger outputs trace logs as info every once in a
-	// while.
+	// In dormant mode the AwakenLogger outputs trace logs as info
+	// every once in a while.
 	Dormant = iota
 	// In awaken mode everything is outputted as-is.
 	Awaken = iota
 )
 
+// LogState keeps track of what the current state is.
 type LogState struct {
 	state int32
-	// Time of last awakening.
-	awakenAt time.Time
 	// For how long state should be kept Awaken.
 	duration time.Duration
 }
@@ -31,56 +30,52 @@ type LogState struct {
 func NewLogState(duration time.Duration) LogState {
 	return LogState{
 		state:    Dormant,
-		awakenAt: time.Time{},
 		duration: duration,
 	}
 }
 
 func (s *LogState) WakeUp() {
 	if atomic.CompareAndSwapInt32(&s.state, Dormant, Awaken) {
-		s.awakenAt = time.Now()
+		time.AfterFunc(s.duration, func() {
+			if !atomic.CompareAndSwapInt32(&s.state, Awaken, Dormant) {
+				panic("illegal state")
+			}
+		})
 	}
 }
 
 func (s *LogState) Awaken() bool {
-	if time.Since(s.awakenAt) < s.duration {
-		return true
-	}
-
-	// Go back into dormant state, if not already.
-	atomic.CompareAndSwapInt32(&s.state, Awaken, Dormant)
-
-	return false
+	return atomic.LoadInt32(&s.state) == Awaken
 }
 
 // +----------------+
-// | StatefulLogger |
+// | AwakenLogger |
 // +----------------+
 
-type StatefulLogger struct {
+type AwakenLogger struct {
 	state LogState
 
 	traceEvery time.Duration
 	traceLast  time.Time
 }
 
-func NewStatefulLogger(d time.Duration) StatefulLogger {
+func NewAwakenLogger(d time.Duration) AwakenLogger {
 	// We use the same duration for both the time awaken and how
 	// often trace logs should be allowed.
-	return StatefulLogger{
+	return AwakenLogger{
 		state:      NewLogState(d),
 		traceEvery: d,
 		traceLast:  time.Time{},
 	}
 }
 
-// WakeUp gets the StatefulLogger out of its dormant state for a an
+// WakeUp gets the AwakenLogger out of its dormant state for a an
 // amount of time.
-func (t *StatefulLogger) WakeUp() {
+func (t *AwakenLogger) WakeUp() {
 	t.state.WakeUp()
 }
 
-func (t *StatefulLogger) Trace() *zerolog.Event {
+func (t *AwakenLogger) Trace() *zerolog.Event {
 	if t.state.Awaken() {
 		return log.Info()
 	}
@@ -91,7 +86,7 @@ func (t *StatefulLogger) Trace() *zerolog.Event {
 // dormantTrace is left unlocked on purpose.  If there is a race
 // condition and more than one thread set `traceLast` to Now(), we
 // don't care, it's still Now().
-func (t *StatefulLogger) dormantTrace() *zerolog.Event {
+func (t *AwakenLogger) dormantTrace() *zerolog.Event {
 	if time.Since(t.traceLast) > t.traceEvery {
 		t.traceLast = time.Now()
 
