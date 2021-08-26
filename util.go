@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
 )
@@ -131,30 +130,6 @@ func (m *ErrorWaitGroup) Wait() error {
 	m.group.Wait()
 
 	return m.err
-}
-
-// +---------+
-// | Logging |
-// +---------+
-
-func Code(e *zerolog.Event, code string) {
-	if code != "" {
-		e = e.Str("code", code)
-	}
-
-	e.Msg(Location2())
-}
-
-func What(e *zerolog.Event, what string) {
-	if what != "" {
-		e = e.Str("what", what)
-	}
-
-	e.Msg(Location2())
-}
-
-func Msg(e *zerolog.Event) {
-	e.Msg(Location2())
 }
 
 // +----------+
