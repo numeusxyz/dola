@@ -1,20 +1,35 @@
 package dola
 
-import "time"
+import (
+	"sync/atomic"
+	"time"
+)
 
-// StatefulLogger upgrades TRACE log lines into INFO every once in a while.
+const (
+	// In dormant mode the StatefulLogger outputs trace logs as info every once in a
+	// while.
+	Dormant = iota
+	// In operational mode everything is outputted as-is.
+	Operational = iota
+)
+
 type StatefulLogger struct {
+	state int32
+
 	traceEvery time.Duration
 	traceLast  time.Time
 }
 
 func NewTimedLogger() StatefulLogger {
 	return StatefulLogger{
+		state:      Dormant,
 		traceEvery: 0,
 		traceLast:  time.Time{},
 	}
 }
 
-func (t *StatefulLogger) TraceEvery(x time.Duration) {
-	t.traceEvery = x
+// WakeUp gets the StatefulLogger out of the dormant state for a predefined amount of
+// time.
+func (t *StatefulLogger) WakeUp() {
+	atomic.CompareAndSwapInt32(&t.state, Dormant, Operational)
 }
