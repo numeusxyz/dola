@@ -48,9 +48,9 @@ func (s *LogState) Awaken() bool {
 	return atomic.LoadInt32(&s.state) == Awaken
 }
 
-// +----------------+
+// +--------------+
 // | AwakenLogger |
-// +----------------+
+// +--------------+
 
 type AwakenLogger struct {
 	state LogState
