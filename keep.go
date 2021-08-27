@@ -144,7 +144,11 @@ func (bot *Keep) getExchange(x interface{}) exchange.IBotExchange {
 	case exchange.IBotExchange:
 		return x
 	case string:
-		return bot.ExchangeManager.GetExchangeByName(x)
+		e, err := bot.ExchangeManager.GetExchangeByName(x)
+		if err != nil {
+			panic(fmt.Sprintf("unable to find %s exchange", x))
+		}
+		return e
 	default:
 		panic("exchangeOrName should be either an instance of exchange.IBotExchange or a string")
 	}
