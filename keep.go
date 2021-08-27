@@ -148,6 +148,7 @@ func (bot *Keep) getExchange(x interface{}) exchange.IBotExchange {
 		if err != nil {
 			panic(fmt.Sprintf("unable to find %s exchange", x))
 		}
+
 		return e
 	default:
 		panic("exchangeOrName should be either an instance of exchange.IBotExchange or a string")
