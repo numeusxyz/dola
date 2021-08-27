@@ -333,7 +333,13 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 }
 
 // setupExchanges is an (almost) unchanged copy of Engine.SetupExchanges.
-//
+// setupExchanges will setup all the servers that are needed to log transactions on an exchange.
+// The first thing is initialize sync.WaitGroup. The WaitGroup is used to wait for a group of go-routines to finish before continuing.
+// Serialize section also has a WaitGroup, but it does not have a defer wg.Done statement.
+// If there was no gesture like this at the end of the "for x:" loop the process would be unresponsive because it would not wait for the others go-routines to finish.
+// The "admin" bot will try to get a list of all exchanges and look for any that say they are disabled. If an exchange is disabled, the bot will not load it.
+// The idea is to have control over what settings are enabled and which ones are not.
+// defer wg.Done() statement is to finish executing the go-routine once the for loop has finished. This is important if we are going to do more than one iteration of the loop with different exchanges.
 // nolint
 func (bot *Keep) setupExchanges(gctlog GCTLog) error {
 	var wg sync.WaitGroup
