@@ -172,6 +172,9 @@ func (bot *Keep) OnOrder(e exchange.IBotExchange, x order.Detail) {
 // | GCT compatibility layer |
 // +-------------------------+
 
+// GCTLog struct has functions for each log type - the Warnf(), Errorf(), and Debugf() functions. The LoadExchange() method for Keep wants an *out log pointer of GCTLog type.
+// The bot variable is an interface which does not contain a struct that has methods for each log type and variable has to be changed to a struct for GCTLog type or a new struct needs to be created that has functions for each log type and use that as the input for LoadExchange().
+// For this code, it is preferred that GCTLog struct is changed to a struct of a log type
 type GCTLog struct {
 	ExchangeSys interface{}
 }
