@@ -359,6 +359,8 @@ github.com/thrasher-corp/gocryptotrader v0.0.0-20210818083103-3467914ab763 h1:gK
 github.com/thrasher-corp/gocryptotrader v0.0.0-20210818083103-3467914ab763/go.mod h1:dVTbBD94l5A4BNiQ+bN2By7cYdYW+HICCxTVzPw6whY=
 github.com/thrasher-corp/gocryptotrader v0.0.0-20210826030914-4851e94eba12 h1:zgSc6axcKWDSAwjvCpTrCr44AGuOMUDZj8BPWQ04ybY=
 github.com/thrasher-corp/gocryptotrader v0.0.0-20210826030914-4851e94eba12/go.mod h1:dVTbBD94l5A4BNiQ+bN2By7cYdYW+HICCxTVzPw6whY=
+github.com/thrasher-corp/gocryptotrader v0.0.0-20210827023134-c9ab0b1164b3 h1:YDE1TmDNHVZ8Ee3976/L4GVbypINemPb4BgjGuQ8bd4=
+github.com/thrasher-corp/gocryptotrader v0.0.0-20210827023134-c9ab0b1164b3/go.mod h1:dVTbBD94l5A4BNiQ+bN2By7cYdYW+HICCxTVzPw6whY=
 github.com/thrasher-corp/goose v2.7.0-rc4.0.20191002032028-0f2c2a27abdb+incompatible h1:SPqQlzFu3g4P9wK2iwJaWVLJWcQ5rYc43rvXBJ8RSCY=
 github.com/thrasher-corp/goose v2.7.0-rc4.0.20191002032028-0f2c2a27abdb+incompatible/go.mod h1:2Bb/y0SpnUWOlPU5kDz+ctvb3w/mzuAVqxy7JPfBzgw=
 github.com/thrasher-corp/sqlboiler v1.0.1-0.20191001234224-71e17f37a85e h1:4kYBo2YhqqFY7aZPPEhrtPTMoAq4iCsoDITd3jseRbY=

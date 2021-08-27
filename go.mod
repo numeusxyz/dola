@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/rs/zerolog v1.23.0
-	github.com/thrasher-corp/gocryptotrader v0.0.0-20210826030914-4851e94eba12
+	github.com/thrasher-corp/gocryptotrader v0.0.0-20210827023134-c9ab0b1164b3
 	go.uber.org/multierr v1.7.0
 )
 
