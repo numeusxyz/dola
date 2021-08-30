@@ -80,6 +80,14 @@ func (d *DedicatedStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x 
 	return nil
 }
 
+func (d *DedicatedStrategy) OnUnrecognized(k *Keep, e exchange.IBotExchange, x interface{}) error {
+	if e.GetName() == d.Exchange {
+		return d.Wrapped.OnUnrecognized(k, e, x)
+	}
+
+	return nil
+}
+
 func (d *DedicatedStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
 	if e.GetName() == d.Exchange {
 		return d.Wrapped.Deinit(k, e)

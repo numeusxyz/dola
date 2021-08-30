@@ -85,6 +85,12 @@ func (v VerboseStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x acc
 	return nil
 }
 
+func (v VerboseStrategy) OnUnrecognized(k *Keep, e exchange.IBotExchange, x interface{}) error {
+	Msg(log.Info().Str("e", e.GetName()).Interface("x", x))
+
+	return nil
+}
+
 func (v VerboseStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
 	Msg(log.Info().Str("e", e.GetName()))
 
