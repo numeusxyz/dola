@@ -54,18 +54,18 @@ func handleData(k *Keep, e exchange.IBotExchange, s Strategy, data interface{}) 
 	case error:
 		return x
 	case stream.FundingData:
-		handleError("OnFunding", data, s.OnFunding(k, e, x))
+		handleError("OnFunding", s.OnFunding(k, e, x))
 	case *ticker.Price:
-		handleError("OnPrice", data, s.OnPrice(k, e, *x))
+		handleError("OnPrice", s.OnPrice(k, e, *x))
 	case stream.KlineData:
-		handleError("OnKline", data, s.OnKline(k, e, x))
+		handleError("OnKline", s.OnKline(k, e, x))
 	case *orderbook.Base:
-		handleError("OnOrderBook", data, s.OnOrderBook(k, e, *x))
+		handleError("OnOrderBook", s.OnOrderBook(k, e, *x))
 	case *order.Detail:
 		k.OnOrder(e, *x)
-		handleError("OnOrder", data, s.OnOrder(k, e, *x))
+		handleError("OnOrder", s.OnOrder(k, e, *x))
 	case *order.Modify:
-		handleError("OnModify", data, s.OnModify(k, e, *x))
+		handleError("OnModify", s.OnModify(k, e, *x))
 	case order.ClassificationError:
 		unhandledType(data, true)
 
@@ -77,20 +77,19 @@ func handleData(k *Keep, e exchange.IBotExchange, s Strategy, data interface{}) 
 	case stream.UnhandledMessageWarning:
 		unhandledType(data, true)
 	case account.Change:
-		handleError("OnBalanceChange", data, s.OnBalanceChange(k, e, x))
+		handleError("OnBalanceChange", s.OnBalanceChange(k, e, x))
 	default:
-		unhandledType(data, false)
+		handleError("OnUnrecognized", s.OnUnrecognized(k, e, data))
 	}
 
 	return nil
 }
 
-func handleError(method string, data interface{}, err error) {
+func handleError(method string, err error) {
 	if err != nil {
 		What(log.Warn().
 			Err(err).
-			Str("method", method).
-			Str("type(data)", fmt.Sprintf("%T", data)),
+			Str("method", method),
 			"method failed")
 	}
 }
