@@ -96,6 +96,10 @@ func (m *RootStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x accou
 	return m.each(func(s Strategy) error { return s.OnBalanceChange(k, e, x) })
 }
 
+func (m *RootStrategy) OnUnrecognized(k *Keep, e exchange.IBotExchange, x interface{}) error {
+	return m.each(func(s Strategy) error { return s.OnUnrecognized(k, e, x) })
+}
+
 func (m *RootStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
 	return m.each(func(s Strategy) error { return s.Deinit(k, e) })
 }
