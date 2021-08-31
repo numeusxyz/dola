@@ -25,35 +25,37 @@ type Keep struct {
 	registry        OrderRegistry
 }
 
-func NewKeep(settings engine.Settings) (*Keep, error) {
+func NewKeep(settings engine.Settings) *Keep {
 	settings.ConfigFile = ConfigFile(settings.ConfigFile)
 
 	var conf config.Config
 
-	keep := &Keep{
+	return &Keep{
 		Root:            NewRootStrategy(),
 		Settings:        settings,
 		Config:          conf,
 		ExchangeManager: *engine.SetupExchangeManager(),
 		registry:        *NewOrderRegistry(),
 	}
+}
 
-	filePath, err := config.GetAndMigrateDefaultPath(keep.Settings.ConfigFile)
+func (bot *Keep) Setup() error {
+	filePath, err := config.GetAndMigrateDefaultPath(bot.Settings.ConfigFile)
 	if err != nil {
-		return keep, err
+		return err
 	}
 
 	What(log.Info().Str("path", filePath), "loading config file...")
 
-	if err := keep.Config.ReadConfigFromFile(filePath, keep.Settings.EnableDryRun); err != nil {
-		return keep, err
+	if err := bot.Config.ReadConfigFromFile(filePath, bot.Settings.EnableDryRun); err != nil {
+		return err
 	}
 
-	if err := keep.setupExchanges(GCTLog{nil}); err != nil {
-		return keep, err
+	if err := bot.setupExchanges(GCTLog{nil}); err != nil {
+		return err
 	}
 
-	return keep, nil
+	return nil
 }
 
 func (bot *Keep) SubmitOrder(exchangeOrName interface{}, submit order.Submit) (order.SubmitResponse, error) {
