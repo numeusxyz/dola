@@ -195,8 +195,8 @@ func (g GCTLog) Debugf(_ interface{}, data string, v ...interface{}) {
 	What(log.Debug(), fmt.Sprintf(data, v...))
 }
 
-func (bot *Keep) LoadExchange(name string, wg *sync.WaitGroup) error {
-	return bot.loadExchange(name, wg, GCTLog{nil})
+func (bot *Keep) LoadExchange(c *config.ExchangeConfig, wg *sync.WaitGroup) error {
+	return bot.loadExchange(c, wg, GCTLog{nil})
 }
 
 // +----------------------------+
@@ -211,8 +211,8 @@ var (
 // loadExchange is an unchanged copy of Engine.LoadExchange.
 //
 // nolint
-func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) error {
-	exch, err := bot.ExchangeManager.NewExchangeByName(name)
+func (bot *Keep) loadExchange(c *config.ExchangeConfig, wg *sync.WaitGroup, gctlog GCTLog) error {
+	exch, err := bot.ExchangeManager.NewExchangeByName(c.Name)
 	if err != nil {
 		return err
 	}
@@ -226,53 +226,49 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 		exch.SetDefaults()
 		localWG.Done()
 	}()
-	exchCfg, err := bot.Config.GetExchangeConfig(name)
-	if err != nil {
-		return err
-	}
 
 	if bot.Settings.EnableAllPairs &&
-		exchCfg.CurrencyPairs != nil {
-		assets := exchCfg.CurrencyPairs.GetAssetTypes(false)
+		c.CurrencyPairs != nil {
+		assets := c.CurrencyPairs.GetAssetTypes(false)
 		for x := range assets {
 			var pairs currency.Pairs
-			pairs, err = exchCfg.CurrencyPairs.GetPairs(assets[x], false)
+			pairs, err = c.CurrencyPairs.GetPairs(assets[x], false)
 			if err != nil {
 				return err
 			}
-			exchCfg.CurrencyPairs.StorePairs(assets[x], pairs, true)
+			c.CurrencyPairs.StorePairs(assets[x], pairs, true)
 		}
 	}
 
 	if bot.Settings.EnableExchangeVerbose {
-		exchCfg.Verbose = true
+		c.Verbose = true
 	}
-	if exchCfg.Features != nil {
+	if c.Features != nil {
 		if bot.Settings.EnableExchangeWebsocketSupport &&
-			exchCfg.Features.Supports.Websocket {
-			exchCfg.Features.Enabled.Websocket = true
+			c.Features.Supports.Websocket {
+			c.Features.Enabled.Websocket = true
 		}
 		if bot.Settings.EnableExchangeAutoPairUpdates &&
-			exchCfg.Features.Supports.RESTCapabilities.AutoPairUpdates {
-			exchCfg.Features.Enabled.AutoPairUpdates = true
+			c.Features.Supports.RESTCapabilities.AutoPairUpdates {
+			c.Features.Enabled.AutoPairUpdates = true
 		}
 		if bot.Settings.DisableExchangeAutoPairUpdates {
-			if exchCfg.Features.Supports.RESTCapabilities.AutoPairUpdates {
-				exchCfg.Features.Enabled.AutoPairUpdates = false
+			if c.Features.Supports.RESTCapabilities.AutoPairUpdates {
+				c.Features.Enabled.AutoPairUpdates = false
 			}
 		}
 	}
 	if bot.Settings.HTTPUserAgent != "" {
-		exchCfg.HTTPUserAgent = bot.Settings.HTTPUserAgent
+		c.HTTPUserAgent = bot.Settings.HTTPUserAgent
 	}
 	if bot.Settings.HTTPProxy != "" {
-		exchCfg.ProxyAddress = bot.Settings.HTTPProxy
+		c.ProxyAddress = bot.Settings.HTTPProxy
 	}
 	if bot.Settings.HTTPTimeout != exchange.DefaultHTTPTimeout {
-		exchCfg.HTTPTimeout = bot.Settings.HTTPTimeout
+		c.HTTPTimeout = bot.Settings.HTTPTimeout
 	}
 	if bot.Settings.EnableExchangeHTTPDebugging {
-		exchCfg.HTTPDebugging = bot.Settings.EnableExchangeHTTPDebugging
+		c.HTTPDebugging = bot.Settings.EnableExchangeHTTPDebugging
 	}
 
 	localWG.Wait()
@@ -291,10 +287,10 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 		}
 	}
 
-	exchCfg.Enabled = true
-	err = exch.Setup(exchCfg)
+	c.Enabled = true
+	err = exch.Setup(c)
 	if err != nil {
-		exchCfg.Enabled = false
+		c.Enabled = false
 		return err
 	}
 
@@ -320,8 +316,8 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 				err)
 			base.API.AuthenticatedSupport = false
 			base.API.AuthenticatedWebsocketSupport = false
-			exchCfg.API.AuthenticatedSupport = false
-			exchCfg.API.AuthenticatedWebsocketSupport = false
+			c.API.AuthenticatedSupport = false
+			c.API.AuthenticatedWebsocketSupport = false
 		}
 	}
 
@@ -353,7 +349,7 @@ func (bot *Keep) setupExchanges(gctlog GCTLog) error {
 		wg.Add(1)
 		go func(c config.ExchangeConfig) {
 			defer wg.Done()
-			err := bot.LoadExchange(c.Name, &wg)
+			err := bot.LoadExchange(&c, &wg)
 			if err != nil {
 				gctlog.Errorf(gctlog.ExchangeSys, "LoadExchange %s failed: %s\n", c.Name, err)
 				return
