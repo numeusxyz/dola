@@ -21,8 +21,13 @@ type Keep struct {
 	Root            RootStrategy
 	Settings        engine.Settings
 	Config          config.Config
+	ConfigOverrider ConfigOverrider
 	ExchangeManager engine.ExchangeManager
 	registry        OrderRegistry
+}
+
+type ConfigOverrider interface {
+	Override(c *config.ExchangeConfig) error
 }
 
 func NewKeep(settings engine.Settings) *Keep {
@@ -36,6 +41,7 @@ func NewKeep(settings engine.Settings) *Keep {
 		Config:          conf,
 		ExchangeManager: *engine.SetupExchangeManager(),
 		registry:        *NewOrderRegistry(),
+		ConfigOverrider: nil,
 	}
 }
 
@@ -349,6 +355,11 @@ func (bot *Keep) setupExchanges(gctlog GCTLog) error {
 		wg.Add(1)
 		go func(c config.ExchangeConfig) {
 			defer wg.Done()
+
+			if bot.ConfigOverrider != nil {
+				bot.ConfigOverrider.Override(&c)
+			}
+
 			err := bot.LoadExchange(&c, &wg)
 			if err != nil {
 				gctlog.Errorf(gctlog.ExchangeSys, "LoadExchange %s failed: %s\n", c.Name, err)
