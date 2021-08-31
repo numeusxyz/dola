@@ -25,6 +25,15 @@ type Keep struct {
 	registry        OrderRegistry
 }
 
+func SetupExchangeManager() *engine.ExchangeManager {
+	m := engine.SetupExchangeManager()
+	// set our custom exchange builder that will allow us to build the numex
+	// exchange
+	m.Builder = ExchangeBuilder{}
+
+	return m
+}
+
 func NewKeep(settings engine.Settings) (*Keep, error) {
 	settings.ConfigFile = ConfigFile(settings.ConfigFile)
 
@@ -34,7 +43,7 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 		Root:            NewRootStrategy(),
 		Settings:        settings,
 		Config:          conf,
-		ExchangeManager: *engine.SetupExchangeManager(),
+		ExchangeManager: *SetupExchangeManager(),
 		registry:        *NewOrderRegistry(),
 	}
 
