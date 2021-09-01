@@ -31,8 +31,11 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 
 	// This goroutine never, I repeat, *never* finishes.
 	for data := range ws.ToRoutine {
-		if err := handleData(k, e, s, data); err != nil {
-			return err
+		err := handleData(k, e, s, data)
+		if err != nil {
+			What(log.Error().
+				Err(err),
+				"error handling data")
 		}
 	}
 
