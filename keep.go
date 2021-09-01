@@ -26,6 +26,10 @@ type Keep struct {
 }
 
 func NewKeep(settings engine.Settings) (*Keep, error) {
+	return NewKeepWithConfig(settings, nil)
+}
+
+func NewKeepWithConfig(settings engine.Settings, augment func(*config.Config) error) (*Keep, error) {
 	settings.ConfigFile = ConfigFile(settings.ConfigFile)
 
 	var conf config.Config
@@ -47,6 +51,13 @@ func NewKeep(settings engine.Settings) (*Keep, error) {
 
 	if err := keep.Config.ReadConfigFromFile(filePath, keep.Settings.EnableDryRun); err != nil {
 		return keep, err
+	}
+
+	if augment != nil {
+		err := augment(&keep.Config)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if err := keep.setupExchanges(GCTLog{nil}); err != nil {
