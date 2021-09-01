@@ -21,6 +21,7 @@ type Keep struct {
 	Root            RootStrategy
 	Settings        engine.Settings
 	Config          config.Config
+	ExchangeFactory ExchangeFactory
 	ExchangeManager engine.ExchangeManager
 	registry        OrderRegistry
 }
@@ -38,6 +39,7 @@ func NewKeepWithConfig(settings engine.Settings, augment func(*config.Config) er
 		Root:            NewRootStrategy(),
 		Settings:        settings,
 		Config:          conf,
+		ExchangeFactory: ExchangeFactory{},
 		ExchangeManager: *engine.SetupExchangeManager(),
 		registry:        *NewOrderRegistry(),
 	}
@@ -58,10 +60,6 @@ func NewKeepWithConfig(settings engine.Settings, augment func(*config.Config) er
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	if err := keep.setupExchanges(GCTLog{nil}); err != nil {
-		return keep, err
 	}
 
 	return keep, nil
@@ -205,7 +203,18 @@ func (g GCTLog) Debugf(_ interface{}, data string, v ...interface{}) {
 }
 
 func (bot *Keep) LoadExchange(name string, wg *sync.WaitGroup) error {
-	return bot.loadExchange(name, wg, GCTLog{nil})
+	if x, err := bot.ExchangeFactory.Create(bot, name); err == nil {
+		// No error was thrown, exchange is created successfully.
+		bot.ExchangeManager.Add(x)
+
+		return nil
+	} else if !errors.Is(err, ErrCreatorNotRegistered) {
+		// Creator is registered, but another error was thrown.
+		return err
+	} else {
+		// Creator is not registered.
+		return bot.loadExchange(name, wg, GCTLog{nil})
+	}
 }
 
 // +----------------------------+
@@ -345,7 +354,11 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 	return nil
 }
 
-// setupExchanges is an (almost) unchanged copy of Engine.SetupExchanges.
+func (bot *Keep) SetupExchanges() error {
+	return bot.setupExchanges(GCTLog{nil})
+}
+
+// SetupExchanges is an (almost) unchanged copy of Engine.SetupExchanges.
 //
 // nolint
 func (bot *Keep) setupExchanges(gctlog GCTLog) error {

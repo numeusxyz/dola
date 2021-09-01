@@ -55,6 +55,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+    keep.SetupExchanges()
 	keep.Root.Add("verbose", dola.VerboseStrategy{})
 	keep.Run()
 }
