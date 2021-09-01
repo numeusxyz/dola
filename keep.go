@@ -203,15 +203,18 @@ func (g GCTLog) Debugf(_ interface{}, data string, v ...interface{}) {
 }
 
 func (bot *Keep) LoadExchange(name string, wg *sync.WaitGroup) error {
-	if x, err := bot.ExchangeFactory.Create(bot, name); err == nil {
+	x, err := bot.ExchangeFactory.Create(bot, name)
+
+	switch {
+	case err == nil:
 		// No error was thrown, exchange is created successfully.
 		bot.ExchangeManager.Add(x)
 
 		return nil
-	} else if !errors.Is(err, ErrCreatorNotRegistered) {
+	case !errors.Is(err, ErrCreatorNotRegistered):
 		// Creator is registered, but another error was thrown.
 		return err
-	} else {
+	default:
 		// Creator is not registered.
 		return bot.loadExchange(name, wg, GCTLog{nil})
 	}
