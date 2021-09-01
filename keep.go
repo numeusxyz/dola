@@ -25,9 +25,10 @@ type Keep struct {
 	Root            RootStrategy
 	Settings        engine.Settings
 	Config          config.Config
-	ExchangeManager engine.ExchangeManager
+	ExchangeManager *engine.ExchangeManager
 	registry        OrderRegistry
 	augment         ConfigAumenterFunc
+	factory         ExchangeFactory
 }
 
 func NewKeep(settings engine.Settings) *Keep {
@@ -36,17 +37,27 @@ func NewKeep(settings engine.Settings) *Keep {
 	var conf config.Config
 
 	return &Keep{
-		Root:            NewRootStrategy(),
-		Settings:        settings,
-		Config:          conf,
-		ExchangeManager: *engine.SetupExchangeManager(),
+		Root:     NewRootStrategy(),
+		Settings: settings,
+		Config:   conf,
+		// ExchangeManager creation is delayed to the Setup phase
+		ExchangeManager: nil,
 		registry:        *NewOrderRegistry(),
 		augment:         nil,
+		factory:         ExchangeFactory{},
 	}
 }
 
 func (bot *Keep) WithConfigAugmenter(augment ConfigAumenterFunc) *Keep {
 	bot.augment = augment
+
+	return bot
+}
+
+func (bot *Keep) WithExchangeFactory(name string, fn ExchangeCreatorFuncK) *Keep {
+	bot.factory.Register(name, func() (exchange.IBotExchange, error) {
+		return fn(bot)
+	})
 
 	return bot
 }
@@ -70,11 +81,20 @@ func (bot *Keep) Setup() error {
 		}
 	}
 
+	bot.SetupExchangeManager()
+
 	if err := bot.setupExchanges(GCTLog{nil}); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (bot *Keep) SetupExchangeManager() {
+	bot.ExchangeManager = engine.SetupExchangeManager()
+	// set our custom exchange builder that will allow us to build custom
+	// exchanges
+	bot.ExchangeManager.Builder = bot.factory
 }
 
 func (bot *Keep) Run() {
@@ -416,7 +436,11 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 	return nil
 }
 
-// setupExchanges is an (almost) unchanged copy of Engine.SetupExchanges.
+func (bot *Keep) SetupExchanges() error {
+	return bot.setupExchanges(GCTLog{nil})
+}
+
+// SetupExchanges is an (almost) unchanged copy of Engine.SetupExchanges.
 //
 // nolint
 func (bot *Keep) setupExchanges(gctlog GCTLog) error {

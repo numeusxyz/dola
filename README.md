@@ -51,10 +51,13 @@ import (
 )
 
 func main() {
-	keep, err := dola.NewKeep(engine.Settings{})
+	keep := dola.NewKeep(engine.Settings{})
+
+    err := keep.Setup()
 	if err != nil {
 		panic(err)
 	}
+
 	keep.Root.Add("verbose", dola.VerboseStrategy{})
 	keep.Run()
 }
