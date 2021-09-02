@@ -8,7 +8,7 @@ import (
 
 var ErrCreatorNotRegistered = errors.New("exchange creator not registered")
 
-type CreatorFunc func(k *Keep, name string) (exchange.IBotExchange, error)
+type CreatorFunc func(k *Keep) (exchange.IBotExchange, error)
 
 type ExchangeFactory map[string]CreatorFunc
 
@@ -23,5 +23,5 @@ func (e ExchangeFactory) Create(k *Keep, name string) (exchange.IBotExchange, er
 		return nil, ErrCreatorNotRegistered
 	}
 
-	return fn(k, name)
+	return fn(k)
 }
