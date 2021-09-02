@@ -1,6 +1,9 @@
 package dola
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"fmt"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -196,4 +199,24 @@ func FileExists(path string) bool {
 	_, err := os.Stat(path)
 
 	return !os.IsNotExist(err)
+}
+
+// RandomOrderID uses code and ideas from:
+// https://stackoverflow.com/questions/32349807 and
+// https://stackoverflow.com/questions/13378815 .
+//
+// Length of produced client order ID is encoded in the code.  See `seed`.
+func RandomOrderID(prefix string) (string, error) {
+	const seed = 24
+	xs := make([]byte, seed)
+
+	if _, err := rand.Read(xs); err != nil {
+		return "", err
+	}
+
+	ys := base64.URLEncoding.EncodeToString(xs)
+	offset := len(prefix)
+	id := fmt.Sprintf("%s%s", prefix, ys[offset:])
+
+	return id, nil
 }
