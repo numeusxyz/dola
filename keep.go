@@ -79,8 +79,6 @@ func (bot *Keep) SubmitOrderUD(exchangeOrName interface{}, submit order.Submit, 
 	// Make sure order.Submit.Exchange is properly populated.
 	submit.Exchange = e.GetName()
 
-	// Do we want to generate a custom order ID in case x.ClientOrderID is empty?
-
 	resp, err := e.SubmitOrder(&submit)
 	if err == nil {
 		if !bot.registry.Store(e.GetName(), resp, userData) {
@@ -106,12 +104,6 @@ func (bot *Keep) SubmitOrders(e exchange.IBotExchange, xs ...order.Submit) error
 	return wg.Wait()
 }
 
-func (bot *Keep) CancelOrder(exchangeOrName interface{}, x order.Cancel) error {
-	e := bot.getExchange(exchangeOrName)
-
-	return e.CancelOrder(&x)
-}
-
 func (bot *Keep) CancelAllOrders(exchangeOrName interface{}, assetType asset.Item, pair currency.Pair) (
 	order.CancelAllResponse, error,
 ) {
@@ -124,6 +116,16 @@ func (bot *Keep) CancelAllOrders(exchangeOrName interface{}, assetType asset.Ite
 	// cancel.Symbol = pair.String()
 
 	return e.CancelAllOrders(&cancel)
+}
+
+func (bot *Keep) CancelOrder(exchangeOrName interface{}, x order.Cancel) error {
+	e := bot.getExchange(exchangeOrName)
+
+	return e.CancelOrder(&x)
+}
+
+func (bot *Keep) CancelOrdersByPrefix(exchangeOrName interface{}, x order.Cancel, prefix string) error {
+	panic("not implemented")
 }
 
 func (bot *Keep) Run() {
