@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/thrasher-corp/gocryptotrader/common"
@@ -13,6 +14,7 @@ import (
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
+	"go.uber.org/multierr"
 )
 
 var ErrOrdersAlreadyExists = errors.New("order already exists")
@@ -67,67 +69,6 @@ func NewKeepWithConfig(settings engine.Settings, augment func(*config.Config) er
 	return keep, nil
 }
 
-func (bot *Keep) SubmitOrder(exchangeOrName interface{}, submit order.Submit) (order.SubmitResponse, error) {
-	return bot.SubmitOrderUD(exchangeOrName, submit, nil)
-}
-
-func (bot *Keep) SubmitOrderUD(exchangeOrName interface{}, submit order.Submit, userData interface{}) (
-	order.SubmitResponse, error,
-) {
-	e := bot.getExchange(exchangeOrName)
-
-	// Make sure order.Submit.Exchange is properly populated.
-	submit.Exchange = e.GetName()
-
-	resp, err := e.SubmitOrder(&submit)
-	if err == nil {
-		if !bot.registry.Store(e.GetName(), resp, userData) {
-			return resp, ErrOrdersAlreadyExists
-		}
-	}
-
-	return resp, err
-}
-
-func (bot *Keep) SubmitOrders(e exchange.IBotExchange, xs ...order.Submit) error {
-	var wg ErrorWaitGroup
-
-	for _, x := range xs {
-		wg.Add(1)
-
-		go func(x order.Submit) {
-			_, err := bot.SubmitOrder(e, x)
-			wg.Done(err)
-		}(x)
-	}
-
-	return wg.Wait()
-}
-
-func (bot *Keep) CancelAllOrders(exchangeOrName interface{}, assetType asset.Item, pair currency.Pair) (
-	order.CancelAllResponse, error,
-) {
-	e := bot.getExchange(exchangeOrName)
-
-	var cancel order.Cancel
-	cancel.Exchange = e.GetName()
-	cancel.AssetType = assetType
-	cancel.Pair = pair
-	// cancel.Symbol = pair.String()
-
-	return e.CancelAllOrders(&cancel)
-}
-
-func (bot *Keep) CancelOrder(exchangeOrName interface{}, x order.Cancel) error {
-	e := bot.getExchange(exchangeOrName)
-
-	return e.CancelOrder(&x)
-}
-
-func (bot *Keep) CancelOrdersByPrefix(exchangeOrName interface{}, x order.Cancel, prefix string) error {
-	panic("not implemented")
-}
-
 func (bot *Keep) Run() {
 	var wg sync.WaitGroup
 
@@ -166,6 +107,126 @@ func (bot *Keep) getExchange(x interface{}) exchange.IBotExchange {
 	default:
 		panic("exchangeOrName should be either an instance of exchange.IBotExchange or a string")
 	}
+}
+
+// +---------------------+
+// | Exchange <-> orders |
+// +---------------------+
+
+func (bot *Keep) GetActiveOrders(exchangeOrName interface{}, request order.GetOrdersRequest) (
+	[]order.Detail, error,
+) {
+	return bot.getExchange(exchangeOrName).GetActiveOrders(&request)
+}
+
+func (bot *Keep) SubmitOrder(exchangeOrName interface{}, submit order.Submit) (order.SubmitResponse, error) {
+	return bot.SubmitOrderUD(exchangeOrName, submit, nil)
+}
+
+func (bot *Keep) SubmitOrderUD(exchangeOrName interface{}, submit order.Submit, userData interface{}) (
+	order.SubmitResponse, error,
+) {
+	e := bot.getExchange(exchangeOrName)
+
+	// Make sure order.Submit.Exchange is properly populated.
+	if submit.Exchange == "" {
+		submit.Exchange = e.GetName()
+	}
+
+	resp, err := e.SubmitOrder(&submit)
+	if err == nil {
+		if !bot.registry.Store(e.GetName(), resp, userData) {
+			return resp, ErrOrdersAlreadyExists
+		}
+	}
+
+	return resp, err
+}
+
+func (bot *Keep) SubmitOrders(e exchange.IBotExchange, xs ...order.Submit) error {
+	var wg ErrorWaitGroup
+
+	for _, x := range xs {
+		wg.Add(1)
+
+		go func(x order.Submit) {
+			_, err := bot.SubmitOrder(e, x)
+			wg.Done(err)
+		}(x)
+	}
+
+	return wg.Wait()
+}
+
+func (bot *Keep) CancelAllOrders(exchangeOrName interface{}, assetType asset.Item, pair currency.Pair) (
+	order.CancelAllResponse, error,
+) {
+	e := bot.getExchange(exchangeOrName)
+
+	var cancel order.Cancel
+	cancel.Exchange = e.GetName()
+	cancel.AssetType = assetType
+	cancel.Pair = pair
+	cancel.Symbol = pair.String()
+
+	return e.CancelAllOrders(&cancel)
+}
+
+func (bot *Keep) CancelOrder(exchangeOrName interface{}, x order.Cancel) error {
+	e := bot.getExchange(exchangeOrName)
+
+	if x.Exchange == "" {
+		x.Exchange = e.GetName()
+	}
+
+	return e.CancelOrder(&x)
+}
+
+func (bot *Keep) CancelOrdersByPrefix(exchangeOrName interface{}, x order.Cancel, prefix string) error {
+	request := order.GetOrdersRequest{
+		Type:      x.Type,
+		Side:      x.Side,
+		StartTime: time.Time{},
+		EndTime:   time.Time{},
+		OrderID:   "",
+		Pairs:     []currency.Pair{x.Pair},
+		AssetType: x.AssetType,
+	}
+
+	xs, err := bot.GetActiveOrders(exchangeOrName, request)
+	if err != nil {
+		return err
+	}
+
+	var multi error
+
+	for _, x := range xs {
+		// Date is left empty on purpose just to make sure no matching by date is
+		// performed.  All the rest is populated as we don't really know which
+		// exchange expects what.
+		err := bot.CancelOrder(exchangeOrName, order.Cancel{
+			Price:         x.Price,
+			Amount:        x.Amount,
+			Exchange:      bot.getExchange(exchangeOrName).GetName(),
+			ID:            x.ID,
+			ClientOrderID: x.ClientOrderID,
+			AccountID:     x.AccountID,
+			ClientID:      x.ClientID,
+			WalletAddress: x.WalletAddress,
+			Type:          x.Type,
+			Side:          x.Side,
+			Status:        x.Status,
+			AssetType:     x.AssetType,
+			Date:          time.Time{},
+			Pair:          x.Pair,
+			Symbol:        x.Pair.String(),
+			Trades:        []order.TradeHistory{},
+		})
+
+		multi = multierr.Append(multi, err)
+	}
+
+	return multi
 }
 
 // +-------------------+
