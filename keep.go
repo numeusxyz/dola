@@ -455,7 +455,7 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 	return nil
 }
 
-// SetupExchanges is an (almost) unchanged copy of Engine.SetupExchanges.
+// setupExchanges is an (almost) unchanged copy of Engine.SetupExchanges.
 //
 // nolint
 func (bot *Keep) setupExchanges(gctlog GCTLog) error {
