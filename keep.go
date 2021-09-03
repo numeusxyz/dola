@@ -17,84 +17,103 @@ import (
 	"go.uber.org/multierr"
 )
 
-var ErrOrdersAlreadyExists = errors.New("order already exists")
+// +-------------+
+// | KeepBuilder |
+// +-------------+
 
-type ConfigAumenterFunc func(*config.Config) error
+type (
+	AugmentConfigFunc func(*config.Config) error
+)
 
-type Keep struct {
-	Root            RootStrategy
-	Settings        engine.Settings
-	Config          config.Config
-	ExchangeManager *engine.ExchangeManager
-	registry        OrderRegistry
-	augment         ConfigAumenterFunc
-	factory         ExchangeFactory
+type KeepBuilder struct {
+	augment  AugmentConfigFunc
+	factory  ExchangeFactory
+	settings engine.Settings
 }
 
-func NewKeep(settings engine.Settings) *Keep {
-	settings.ConfigFile = ConfigFile(settings.ConfigFile)
-
-	var conf config.Config
-
-	return &Keep{
-		Root:     NewRootStrategy(),
-		Settings: settings,
-		Config:   conf,
-		// ExchangeManager creation is delayed to the Setup phase
-		ExchangeManager: nil,
-		registry:        *NewOrderRegistry(),
-		augment:         nil,
-		factory:         ExchangeFactory{},
+func NewKeepBuilder() *KeepBuilder {
+	// nolint: exhaustivestruct
+	return &KeepBuilder{
+		augment: nil,
+		factory: ExchangeFactory{},
 	}
 }
 
-func (bot *Keep) WithConfigAugmenter(augment ConfigAumenterFunc) *Keep {
-	bot.augment = augment
+func (b *KeepBuilder) Augment(f AugmentConfigFunc) *KeepBuilder {
+	b.augment = f
 
-	return bot
+	return b
 }
 
-func (bot *Keep) WithExchangeFactory(name string, fn ExchangeCreatorFuncK) *Keep {
-	bot.factory.Register(name, func() (exchange.IBotExchange, error) {
-		return fn(bot)
-	})
+func (b *KeepBuilder) Settings(s engine.Settings) *KeepBuilder {
+	b.settings = s
 
-	return bot
+	return b
 }
 
-func (bot *Keep) Setup() error {
-	filePath, err := config.GetAndMigrateDefaultPath(bot.Settings.ConfigFile)
+func (b *KeepBuilder) CustomExchange(name string, fn ExchangeCreatorFunc) *KeepBuilder {
+	b.factory.Register(name, fn)
+
+	return b
+}
+
+func (b *KeepBuilder) Build() (*Keep, error) {
+	// Resolve path to config file.
+	b.settings.ConfigFile = ConfigFile(b.settings.ConfigFile)
+
+	filePath, err := config.GetAndMigrateDefaultPath(b.settings.ConfigFile)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	var (
+		conf config.Config
+		keep = &Keep{
+			Config:          conf,
+			ExchangeManager: *engine.SetupExchangeManager(),
+			Root:            NewRootStrategy(),
+			Settings:        b.settings,
+			registry:        *NewOrderRegistry(),
+		}
+	)
+
+	// Read config file.
 	What(log.Info().Str("path", filePath), "loading config file...")
 
-	if err := bot.Config.ReadConfigFromFile(filePath, bot.Settings.EnableDryRun); err != nil {
-		return err
+	if err := keep.Config.ReadConfigFromFile(filePath, b.settings.EnableDryRun); err != nil {
+		return nil, err
 	}
 
-	if bot.augment != nil {
-		err := bot.augment(&bot.Config)
-		if err != nil {
-			return err
+	// Optionally augment config.
+	if b.augment != nil {
+		if err := b.augment(&keep.Config); err != nil {
+			return keep, err
 		}
 	}
 
-	bot.SetupExchangeManager()
+	// Assign custom exchange builder.
+	keep.ExchangeManager.Builder = b.factory
 
-	if err := bot.setupExchanges(GCTLog{nil}); err != nil {
-		return err
+	// Once everything is set, create and setup exchanges.
+	if err := keep.setupExchanges(GCTLog{nil}); err != nil {
+		return keep, err
 	}
 
-	return nil
+	return keep, nil
 }
 
-func (bot *Keep) SetupExchangeManager() {
-	bot.ExchangeManager = engine.SetupExchangeManager()
-	// set our custom exchange builder that will allow us to build custom
-	// exchanges
-	bot.ExchangeManager.Builder = bot.factory
+// +------+
+// | Keep |
+// +------+
+
+var ErrOrdersAlreadyExists = errors.New("order already exists")
+
+type Keep struct {
+	Config          config.Config
+	ExchangeManager engine.ExchangeManager
+	Root            RootStrategy
+	Settings        engine.Settings
+	registry        OrderRegistry
 }
 
 func (bot *Keep) Run() {
@@ -137,9 +156,9 @@ func (bot *Keep) getExchange(x interface{}) exchange.IBotExchange {
 	}
 }
 
-// +---------------------+
-// | Exchange <-> orders |
-// +---------------------+
+// +-------------------------+
+// | Keep: Exchange & orders |
+// +-------------------------+
 
 func (bot *Keep) GetActiveOrders(exchangeOrName interface{}, request order.GetOrdersRequest) (
 	[]order.Detail, error,
@@ -257,9 +276,9 @@ func (bot *Keep) CancelOrdersByPrefix(exchangeOrName interface{}, x order.Cancel
 	return multi
 }
 
-// +-------------------+
-// | Event observation |
-// +-------------------+
+// +-------------------------+
+// | Keep: Event observation |
+// +-------------------------+
 
 func (bot *Keep) OnOrder(e exchange.IBotExchange, x order.Detail) {
 	if x.Status == order.Filled {
@@ -275,9 +294,9 @@ func (bot *Keep) OnOrder(e exchange.IBotExchange, x order.Detail) {
 	}
 }
 
-// +-------------------------+
-// | GCT compatibility layer |
-// +-------------------------+
+// +-------------------------------+
+// | Keep: GCT compatibility layer |
+// +-------------------------------+
 
 type GCTLog struct {
 	ExchangeSys interface{}
@@ -434,10 +453,6 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 	}
 
 	return nil
-}
-
-func (bot *Keep) SetupExchanges() error {
-	return bot.setupExchanges(GCTLog{nil})
 }
 
 // SetupExchanges is an (almost) unchanged copy of Engine.SetupExchanges.
