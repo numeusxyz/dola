@@ -56,3 +56,20 @@ func main() {
 }
 
 ```
+
+### Augment config
+
+```go
+keep, _ := dola.NewKeepBuilder().Augment(func (c *config.Config) erro {
+    doSomething(c)
+}).Build()
+```
+
+### Build custom exchanges
+
+```go
+creator := func() (exchange.IBotExchange, error) {
+  return NewCustomExchange()
+}
+keep, _ := dola.NewKeepBuilder().CustomExchange(name, creator).Build()
+```
