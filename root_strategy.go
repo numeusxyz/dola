@@ -1,6 +1,7 @@
 package dola
 
 import (
+	"errors"
 	"sync"
 
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
@@ -16,6 +17,11 @@ import (
 // | Manager |
 // +---------+
 
+var (
+	ErrStrategyNotFound = errors.New("strategy not found")
+	ErrNotStrategy      = errors.New("given object is not a strategy")
+)
+
 type RootStrategy struct {
 	strategies sync.Map
 }
@@ -26,12 +32,8 @@ func NewRootStrategy() RootStrategy {
 	}
 }
 
-func (m *RootStrategy) Add(name string, s Strategy) error {
-	if _, loaded := m.strategies.LoadOrStore(name, s); loaded {
-		return ErrStrategyAlreadyExists
-	}
-
-	return nil
+func (m *RootStrategy) Add(name string, s Strategy) {
+	m.strategies.Store(name, s)
 }
 
 func (m *RootStrategy) Delete(name string) (Strategy, error) {
