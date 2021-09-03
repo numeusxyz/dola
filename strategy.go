@@ -1,7 +1,6 @@
 package dola
 
 import (
-	"errors"
 	"time"
 
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
@@ -10,12 +9,6 @@ import (
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
-)
-
-var (
-	ErrStrategyNotFound      = errors.New("strategy not found")
-	ErrNotStrategy           = errors.New("given object is not a strategy")
-	ErrStrategyAlreadyExists = errors.New("strategy already exists")
 )
 
 // +----------+
