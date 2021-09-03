@@ -17,56 +17,103 @@ import (
 	"go.uber.org/multierr"
 )
 
-var ErrOrdersAlreadyExists = errors.New("order already exists")
+// +-------------+
+// | KeepBuilder |
+// +-------------+
 
-type Keep struct {
-	Root            RootStrategy
-	Settings        engine.Settings
-	Config          config.Config
-	ExchangeManager engine.ExchangeManager
-	registry        OrderRegistry
+type (
+	AugmentConfigFunc func(*config.Config) error
+)
+
+type KeepBuilder struct {
+	augment  AugmentConfigFunc
+	factory  ExchangeFactory
+	settings engine.Settings
 }
 
-func NewKeep(settings engine.Settings) (*Keep, error) {
-	return NewKeepWithConfig(settings, nil)
-}
-
-func NewKeepWithConfig(settings engine.Settings, augment func(*config.Config) error) (*Keep, error) {
-	settings.ConfigFile = ConfigFile(settings.ConfigFile)
-
-	var conf config.Config
-
-	keep := &Keep{
-		Root:            NewRootStrategy(),
-		Settings:        settings,
-		Config:          conf,
-		ExchangeManager: *engine.SetupExchangeManager(),
-		registry:        *NewOrderRegistry(),
+func NewKeepBuilder() *KeepBuilder {
+	// nolint: exhaustivestruct
+	return &KeepBuilder{
+		augment: nil,
+		factory: ExchangeFactory{},
 	}
+}
 
-	filePath, err := config.GetAndMigrateDefaultPath(keep.Settings.ConfigFile)
+func (b *KeepBuilder) Augment(f AugmentConfigFunc) *KeepBuilder {
+	b.augment = f
+
+	return b
+}
+
+func (b *KeepBuilder) Settings(s engine.Settings) *KeepBuilder {
+	b.settings = s
+
+	return b
+}
+
+func (b *KeepBuilder) CustomExchange(name string, fn ExchangeCreatorFunc) *KeepBuilder {
+	b.factory.Register(name, fn)
+
+	return b
+}
+
+func (b *KeepBuilder) Build() (*Keep, error) {
+	// Resolve path to config file.
+	b.settings.ConfigFile = ConfigFile(b.settings.ConfigFile)
+
+	filePath, err := config.GetAndMigrateDefaultPath(b.settings.ConfigFile)
 	if err != nil {
-		return keep, err
+		return nil, err
 	}
 
+	var (
+		conf config.Config
+		keep = &Keep{
+			Config:          conf,
+			ExchangeManager: *engine.SetupExchangeManager(),
+			Root:            NewRootStrategy(),
+			Settings:        b.settings,
+			registry:        *NewOrderRegistry(),
+		}
+	)
+
+	// Read config file.
 	What(log.Info().Str("path", filePath), "loading config file...")
 
-	if err := keep.Config.ReadConfigFromFile(filePath, keep.Settings.EnableDryRun); err != nil {
-		return keep, err
+	if err := keep.Config.ReadConfigFromFile(filePath, b.settings.EnableDryRun); err != nil {
+		return nil, err
 	}
 
-	if augment != nil {
-		err := augment(&keep.Config)
-		if err != nil {
-			return nil, err
+	// Optionally augment config.
+	if b.augment != nil {
+		if err := b.augment(&keep.Config); err != nil {
+			return keep, err
 		}
 	}
 
+	// Assign custom exchange builder.
+	keep.ExchangeManager.Builder = b.factory
+
+	// Once everything is set, create and setup exchanges.
 	if err := keep.setupExchanges(GCTLog{nil}); err != nil {
 		return keep, err
 	}
 
 	return keep, nil
+}
+
+// +------+
+// | Keep |
+// +------+
+
+var ErrOrdersAlreadyExists = errors.New("order already exists")
+
+type Keep struct {
+	Config          config.Config
+	ExchangeManager engine.ExchangeManager
+	Root            RootStrategy
+	Settings        engine.Settings
+	registry        OrderRegistry
 }
 
 func (bot *Keep) Run() {
@@ -109,9 +156,9 @@ func (bot *Keep) getExchange(x interface{}) exchange.IBotExchange {
 	}
 }
 
-// +---------------------+
-// | Exchange <-> orders |
-// +---------------------+
+// +-------------------------+
+// | Keep: Exchange & orders |
+// +-------------------------+
 
 func (bot *Keep) GetActiveOrders(exchangeOrName interface{}, request order.GetOrdersRequest) (
 	[]order.Detail, error,
@@ -229,9 +276,9 @@ func (bot *Keep) CancelOrdersByPrefix(exchangeOrName interface{}, x order.Cancel
 	return multi
 }
 
-// +-------------------+
-// | Event observation |
-// +-------------------+
+// +-------------------------+
+// | Keep: Event observation |
+// +-------------------------+
 
 func (bot *Keep) OnOrder(e exchange.IBotExchange, x order.Detail) {
 	if x.Status == order.Filled {
@@ -247,9 +294,9 @@ func (bot *Keep) OnOrder(e exchange.IBotExchange, x order.Detail) {
 	}
 }
 
-// +-------------------------+
-// | GCT compatibility layer |
-// +-------------------------+
+// +-------------------------------+
+// | Keep: GCT compatibility layer |
+// +-------------------------------+
 
 type GCTLog struct {
 	ExchangeSys interface{}

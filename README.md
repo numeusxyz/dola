@@ -46,17 +46,30 @@ type Strategy interface {
 package main
 
 import (
-	"github.com/thrasher-corp/gocryptotrader/engine"
 	"github.com/numus-digital/dola"
 )
 
 func main() {
-	keep, err := dola.NewKeep(engine.Settings{})
-	if err != nil {
-		panic(err)
-	}
+	keep, _ := dola.NewKeepBuilder().Build()
 	keep.Root.Add("verbose", dola.VerboseStrategy{})
 	keep.Run()
 }
 
+```
+
+### Augment config
+
+```go
+keep, _ := dola.NewKeepBuilder().Augment(func (c *config.Config) erro {
+    doSomething(c)
+}).Build()
+```
+
+### Build custom exchanges
+
+```go
+creator := func() (exchange.IBotExchange, error) {
+  return NewCustomExchange()
+}
+keep, _ := dola.NewKeepBuilder().CustomExchange(name, creator).Build()
 ```
