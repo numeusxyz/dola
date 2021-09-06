@@ -23,6 +23,7 @@ func TestReporterUnit_State(t *testing.T) {
 			if !ok {
 				t.Errorf("wrong element type: have %T, want int, xs=%v", u.State[i], xs)
 			}
+
 			if have != want {
 				t.Errorf("wrong element value: have %d, want %d, xs=%v", have, want, xs)
 			}
@@ -45,6 +46,8 @@ func TestReporterUnit_State(t *testing.T) {
 }
 
 func TestReporterUnit_Floats(t *testing.T) {
+	t.Parallel()
+
 	u := dola.NewReporterUnit("", 5)
 	u.Push(2.0)
 	u.Push(4.0)
