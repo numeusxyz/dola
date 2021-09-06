@@ -2,7 +2,6 @@ package dola
 
 import (
 	"fmt"
-	"time"
 
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
@@ -69,14 +68,12 @@ func (u *Historian) Last() interface{} {
 // +-------------------+
 
 type HistorianStrategy struct {
-	Interval     time.Duration
 	onPriceUnits map[string][]*Historian
 	onOrderUnits map[string][]*Historian
 }
 
-func NewHistorianStrategy(interval time.Duration) HistorianStrategy {
+func NewHistorianStrategy() HistorianStrategy {
 	return HistorianStrategy{
-		Interval:     interval,
 		onPriceUnits: make(map[string][]*Historian),
 		onOrderUnits: make(map[string][]*Historian),
 	}
