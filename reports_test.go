@@ -10,7 +10,7 @@ import (
 func TestReporterUnit_State(t *testing.T) {
 	t.Parallel()
 
-	u := dola.NewReporterUnit("", 3, nil)
+	u := dola.NewHistorian("", 3, nil)
 	f := func(xs ...float64) {
 		t.Helper()
 
@@ -35,7 +35,7 @@ func TestReporterUnit_State(t *testing.T) {
 func TestReporterUnit_Floats(t *testing.T) {
 	t.Parallel()
 
-	u := dola.NewReporterUnit("", 5, nil)
+	u := dola.NewHistorian("", 5, nil)
 	u.Push(2.0)
 	u.Push(4.0)
 	u.Push(8.0)
