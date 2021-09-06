@@ -7,7 +7,7 @@ import (
 	"github.com/numus-digital/dola"
 )
 
-func TestReporterUnit_State(t *testing.T) {
+func TestHistorian_State(t *testing.T) {
 	t.Parallel()
 
 	u := dola.NewHistorian("", 3, nil)
@@ -32,7 +32,7 @@ func TestReporterUnit_State(t *testing.T) {
 	f(4, 8, 16)
 }
 
-func TestReporterUnit_Floats(t *testing.T) {
+func TestHistorian_Floats(t *testing.T) {
 	t.Parallel()
 
 	u := dola.NewHistorian("", 5, nil)
