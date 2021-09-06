@@ -45,14 +45,14 @@ func (b *KeepBuilder) Augment(f AugmentConfigFunc) *KeepBuilder {
 	return b
 }
 
-func (b *KeepBuilder) Settings(s engine.Settings) *KeepBuilder {
-	b.settings = s
+func (b *KeepBuilder) CustomExchange(name string, fn ExchangeCreatorFunc) *KeepBuilder {
+	b.factory.Register(name, fn)
 
 	return b
 }
 
-func (b *KeepBuilder) CustomExchange(name string, fn ExchangeCreatorFunc) *KeepBuilder {
-	b.factory.Register(name, fn)
+func (b *KeepBuilder) Settings(s engine.Settings) *KeepBuilder {
+	b.settings = s
 
 	return b
 }
