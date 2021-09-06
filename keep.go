@@ -77,10 +77,10 @@ func (b *KeepBuilder) Build() (*Keep, error) {
 		}
 	)
 
-	// Add historians: a special strategy that may keep multiple channels of
-	// historical data.
-	hist := NewHistorianStrategy()
-	keep.Root.Add("historian", &hist)
+	// Add history strategy: a special type of strategy that may keep multiple
+	// channels of historical data.
+	hist := NewHistoryStrategy()
+	keep.Root.Add("history", &hist)
 
 	// Read config file.
 	What(log.Info().Str("path", filePath), "loading config file...")
@@ -151,12 +151,12 @@ func (bot *Keep) AddHistorian(
 	stateLength int,
 	f func(Array),
 ) error {
-	strategy, err := bot.Root.Get("historian")
+	strategy, err := bot.Root.Get("history")
 	if err != nil {
 		return err
 	}
 
-	hist, ok := strategy.(*HistorianStrategy)
+	hist, ok := strategy.(*HistoryStrategy)
 	if !ok {
 		panic("")
 	}
