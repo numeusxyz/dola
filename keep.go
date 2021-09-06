@@ -26,16 +26,20 @@ type (
 )
 
 type KeepBuilder struct {
-	augment  AugmentConfigFunc
-	factory  ExchangeFactory
-	settings engine.Settings
+	augment             AugmentConfigFunc
+	balancesRefreshRate time.Duration
+	factory             ExchangeFactory
+	settings            engine.Settings
 }
 
 func NewKeepBuilder() *KeepBuilder {
-	// nolint: exhaustivestruct
+	var settings engine.Settings
+
 	return &KeepBuilder{
-		augment: nil,
-		factory: ExchangeFactory{},
+		augment:             nil,
+		balancesRefreshRate: 0,
+		factory:             ExchangeFactory{},
+		settings:            settings,
 	}
 }
 
@@ -43,6 +47,10 @@ func (b *KeepBuilder) Augment(f AugmentConfigFunc) *KeepBuilder {
 	b.augment = f
 
 	return b
+}
+
+func (b *KeepBuilder) Balances(refreshRate time.Duration) {
+	b.balancesRefreshRate = refreshRate
 }
 
 func (b *KeepBuilder) CustomExchange(name string, fn ExchangeCreatorFunc) *KeepBuilder {
@@ -81,6 +89,12 @@ func (b *KeepBuilder) Build() (*Keep, error) {
 	// channels of historical data.
 	hist := NewHistoryStrategy()
 	keep.Root.Add("history", &hist)
+
+	// Optionally add the balances strategy that keeps track of available balances per
+	// exchange.
+	if b.balancesRefreshRate > 0 {
+		keep.Root.Add("balances", NewBalancesStrategy(b.balancesRefreshRate))
+	}
 
 	// Read config file.
 	What(log.Info().Str("path", filePath), "loading config file...")
