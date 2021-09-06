@@ -12,9 +12,9 @@ import (
 	"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
 )
 
-// +--------------+
-// | ReporterUnit |
-// +--------------+
+// +-----------+
+// | Historian |
+// +-----------+
 
 type Array interface {
 	At(index int) interface{}
