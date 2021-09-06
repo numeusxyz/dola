@@ -49,8 +49,10 @@ func (b *KeepBuilder) Augment(f AugmentConfigFunc) *KeepBuilder {
 	return b
 }
 
-func (b *KeepBuilder) Balances(refreshRate time.Duration) {
+func (b *KeepBuilder) Balances(refreshRate time.Duration) *KeepBuilder {
 	b.balancesRefreshRate = refreshRate
+
+	return b
 }
 
 func (b *KeepBuilder) CustomExchange(name string, fn ExchangeCreatorFunc) *KeepBuilder {
