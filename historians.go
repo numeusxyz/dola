@@ -2,7 +2,6 @@ package dola
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
@@ -20,6 +19,10 @@ import (
 type Array interface {
 	At(index int) interface{}
 	Len() int
+	Last() interface{}
+
+	Floats() []float64
+	LastFloat() float64
 }
 
 type Historian struct {
@@ -58,25 +61,7 @@ func (u *Historian) Update(now time.Time, x interface{}) {
 
 // Floats returns the State array, but casted to []float64.
 func (u *Historian) Floats() []float64 {
-	ys := make([]float64, u.state.Len())
-
-	for i := 0; i < u.state.Len(); i++ {
-		x := u.state.At(i)
-
-		if y, ok := x.(float64); !ok {
-			panic(fmt.Sprintf("illegal type: %T", x))
-		} else {
-			ys[i] = y
-		}
-	}
-
-	return ys
-}
-
-func (u *Historian) Last() interface{} {
-	index := u.state.Len() - 1
-
-	return u.state.At(index)
+	return u.state.Floats()
 }
 
 // +-------------------+

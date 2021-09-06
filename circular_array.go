@@ -1,5 +1,11 @@
 package dola
 
+import "fmt"
+
+// +---------------+
+// | CircularArray |
+// +---------------+
+
 type CircularArray struct {
 	Offset int
 	xs     []interface{}
@@ -15,16 +21,6 @@ func NewCircularArray(n int) CircularArray {
 		Offset: 0,
 		xs:     xs,
 	}
-}
-
-func (a *CircularArray) Len() int {
-	return len(a.xs)
-}
-
-func (a *CircularArray) At(index int) interface{} {
-	mapped := a.Index(index)
-
-	return a.xs[mapped]
 }
 
 // Index maps an external 0-based index to the corresponding internal index.
@@ -44,4 +40,42 @@ func (a *CircularArray) Push(x interface{}) {
 		last := a.LastIndex()
 		a.xs[last] = x
 	}
+}
+
+// +-----------------+
+// | Array interface |
+// +-----------------+
+
+func (a *CircularArray) Len() int {
+	return len(a.xs)
+}
+
+func (a *CircularArray) At(index int) interface{} {
+	mapped := a.Index(index)
+
+	return a.xs[mapped]
+}
+
+func (a *CircularArray) Last() interface{} {
+	return a.At(a.Len() - 1)
+}
+
+func (a *CircularArray) Floats() []float64 {
+	ys := make([]float64, a.Len())
+
+	for i := 0; i < a.Len(); i++ {
+		x := a.At(i)
+
+		if y, ok := x.(float64); !ok {
+			panic(fmt.Sprintf("illegal type: %T", x))
+		} else {
+			ys[i] = y
+		}
+	}
+
+	return ys
+}
+
+func (a *CircularArray) LastFloat() float64 {
+	return a.Last().(float64)
 }
