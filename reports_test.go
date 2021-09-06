@@ -10,45 +10,32 @@ import (
 func TestReporterUnit_State(t *testing.T) {
 	t.Parallel()
 
-	u := dola.NewReporterUnit("", 3)
-	f := func(xs ...int) {
+	u := dola.NewReporterUnit("", 3, nil)
+	f := func(xs ...float64) {
 		t.Helper()
 
-		if have, want := len(u.State), len(xs); have != want {
-			t.Errorf("wrong length: have %d, want %d, xs=%v", have, want, xs)
-		}
-
-		for i, want := range xs {
-			have, ok := u.State[i].(int)
-			if !ok {
-				t.Errorf("wrong element type: have %T, want int, xs=%v", u.State[i], xs)
-			}
-
-			if have != want {
-				t.Errorf("wrong element value: have %d, want %d, xs=%v", have, want, xs)
-			}
+		if diff := cmp.Diff(xs, u.Floats()); diff != "" {
+			t.Error(diff)
 		}
 	}
 
-	f()
+	u.Push(2.0)
+	f(2)
 
-	u.Push(10)
-	f(10)
+	u.Push(4.0)
+	f(2, 4)
 
-	u.Push(20)
-	f(10, 20)
+	u.Push(8.0)
+	f(2, 4, 8)
 
-	u.Push(30)
-	f(10, 20, 30)
-
-	u.Push(40)
-	f(20, 30, 40)
+	u.Push(16.0)
+	f(4, 8, 16)
 }
 
 func TestReporterUnit_Floats(t *testing.T) {
 	t.Parallel()
 
-	u := dola.NewReporterUnit("", 5)
+	u := dola.NewReporterUnit("", 5, nil)
 	u.Push(2.0)
 	u.Push(4.0)
 	u.Push(8.0)

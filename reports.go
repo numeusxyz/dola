@@ -2,7 +2,6 @@ package dola
 
 import (
 	"fmt"
-	"reflect"
 	"time"
 
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
@@ -17,71 +16,79 @@ import (
 // | ReporterUnit |
 // +--------------+
 
-type ReporterUnit struct {
-	Key   string
-	State []interface{}
+type Array interface {
+	At(index int) interface{}
+	Len() int
 }
 
-func NewReporterUnit(key string, n int) ReporterUnit {
+type ReporterUnit struct {
+	Key   string
+	F     func(state Array)
+	state Array
+}
+
+func NewReporterUnit(key string, n int, f func(state Array)) ReporterUnit {
+	state := NewCircularArray(n)
+
 	return ReporterUnit{
 		Key:   key,
-		State: make([]interface{}, 0, n),
+		F:     f,
+		state: &state,
 	}
 }
 
 func (u *ReporterUnit) Push(x interface{}) {
-	n := len(u.State)
-
-	// Make sure every Push() is called with the same argument type.
-	if n > 0 {
-		if have, want := reflect.TypeOf(x), reflect.TypeOf(u.State[0]); have != want {
-			panic(fmt.Sprintf("wrong type: have %v, want %v", have, want))
-		}
-	}
-
-	if n == cap(u.State) {
-		// Make room for this element by scratching off the first one.
-		//
-		// TODO: This causes a memory leak!
-		u.State = u.State[1:]
-	}
-
-	fmt.Printf("BEFORE: len=%d cap=%d\n", len(u.State), cap(u.State))
-	u.State = append(u.State, x)
-	fmt.Printf("AFTER: len=%d cap=%d\n", len(u.State), cap(u.State))
-
+	u.state.(*CircularArray).Push(x)
 }
 
 // Floats returns the State array, but casted to []float64.
 func (u *ReporterUnit) Floats() []float64 {
-	ys := make([]float64, len(u.State))
-	for i, x := range u.State {
-		y, ok := x.(float64)
-		if !ok {
+	ys := make([]float64, u.state.Len())
+
+	for i := 0; i < u.state.Len(); i++ {
+		x := u.state.At(i)
+
+		if y, ok := x.(float64); !ok {
 			panic(fmt.Sprintf("illegal type: %T", x))
+		} else {
+			ys[i] = y
 		}
-		ys[i] = y
 	}
 
 	return ys
 }
 
 func (u *ReporterUnit) Last() interface{} {
-	//
-	return nil
+	index := u.state.Len() - 1
+
+	return u.state.At(index)
 }
 
-// +----------+
-// | Reporter |
-// +----------+
+// +-----------+
+// | Historian |
+// +-----------+
 
 type Reporter struct {
-	RefreshTime  time.Duration
-	onPriceUnits map[string]ReporterUnit
-	onOrderUnits map[string]ReporterUnit
+	Interval     time.Duration
+	onPriceUnits map[string][]*ReporterUnit
+	onOrderUnits map[string][]*ReporterUnit
+}
+
+func NewReporter(interval time.Duration) Reporter {
+	return Reporter{
+		Interval:     interval,
+		onPriceUnits: make(map[string][]*ReporterUnit),
+		onOrderUnits: make(map[string][]*ReporterUnit),
+	}
+}
+
+func (r *Reporter) BindOnPrice(unit *ReporterUnit) {
 }
 
 func (r *Reporter) Init(k *Keep, e exchange.IBotExchange) error {
+	r.onPriceUnits[e.GetName()] = make([]*ReporterUnit, 0)
+	r.onOrderUnits[e.GetName()] = make([]*ReporterUnit, 0)
+
 	return nil
 }
 
@@ -90,9 +97,7 @@ func (r *Reporter) OnFunding(k *Keep, e exchange.IBotExchange, x stream.FundingD
 }
 
 func (r *Reporter) OnPrice(k *Keep, e exchange.IBotExchange, x ticker.Price) error {
-	// r.onPriceUnits[e.GetName()].State
-
-	return nil
+	return fire(r.onPriceUnits, e, x)
 }
 
 func (r *Reporter) OnKline(k *Keep, e exchange.IBotExchange, x stream.KlineData) error {
@@ -104,7 +109,7 @@ func (r *Reporter) OnOrderBook(k *Keep, e exchange.IBotExchange, x orderbook.Bas
 }
 
 func (r *Reporter) OnOrder(k *Keep, e exchange.IBotExchange, x order.Detail) error {
-	return nil
+	return fire(r.onOrderUnits, e, x)
 }
 
 func (r *Reporter) OnModify(k *Keep, e exchange.IBotExchange, x order.Modify) error {
@@ -120,5 +125,15 @@ func (r *Reporter) OnUnrecognized(k *Keep, e exchange.IBotExchange, x interface{
 }
 
 func (r *Reporter) Deinit(k *Keep, e exchange.IBotExchange) error {
+	return nil
+}
+
+func fire(units map[string][]*ReporterUnit, e exchange.IBotExchange, x interface{}) error {
+	name := e.GetName()
+	for _, unit := range units[name] {
+		unit.Push(x)
+		unit.F(unit.state)
+	}
+
 	return nil
 }
