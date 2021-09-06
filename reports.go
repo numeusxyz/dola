@@ -68,63 +68,67 @@ func (u *ReporterUnit) Last() interface{} {
 // | Historian |
 // +-----------+
 
-type Reporter struct {
+type Historian struct {
 	Interval     time.Duration
 	onPriceUnits map[string][]*ReporterUnit
 	onOrderUnits map[string][]*ReporterUnit
 }
 
-func NewReporter(interval time.Duration) Reporter {
-	return Reporter{
+func NewHistorian(interval time.Duration) Historian {
+	return Historian{
 		Interval:     interval,
 		onPriceUnits: make(map[string][]*ReporterUnit),
 		onOrderUnits: make(map[string][]*ReporterUnit),
 	}
 }
 
-func (r *Reporter) BindOnPrice(unit *ReporterUnit) {
+func (r *Historian) BindOnPrice(unit *ReporterUnit) {
 }
 
-func (r *Reporter) Init(k *Keep, e exchange.IBotExchange) error {
+// +------------------------------------+
+// | Historian: Strategy implementation |
+// +------------------------------------+
+
+func (r *Historian) Init(k *Keep, e exchange.IBotExchange) error {
 	r.onPriceUnits[e.GetName()] = make([]*ReporterUnit, 0)
 	r.onOrderUnits[e.GetName()] = make([]*ReporterUnit, 0)
 
 	return nil
 }
 
-func (r *Reporter) OnFunding(k *Keep, e exchange.IBotExchange, x stream.FundingData) error {
+func (r *Historian) OnFunding(k *Keep, e exchange.IBotExchange, x stream.FundingData) error {
 	return nil
 }
 
-func (r *Reporter) OnPrice(k *Keep, e exchange.IBotExchange, x ticker.Price) error {
+func (r *Historian) OnPrice(k *Keep, e exchange.IBotExchange, x ticker.Price) error {
 	return fire(r.onPriceUnits, e, x)
 }
 
-func (r *Reporter) OnKline(k *Keep, e exchange.IBotExchange, x stream.KlineData) error {
+func (r *Historian) OnKline(k *Keep, e exchange.IBotExchange, x stream.KlineData) error {
 	return nil
 }
 
-func (r *Reporter) OnOrderBook(k *Keep, e exchange.IBotExchange, x orderbook.Base) error {
+func (r *Historian) OnOrderBook(k *Keep, e exchange.IBotExchange, x orderbook.Base) error {
 	return nil
 }
 
-func (r *Reporter) OnOrder(k *Keep, e exchange.IBotExchange, x order.Detail) error {
+func (r *Historian) OnOrder(k *Keep, e exchange.IBotExchange, x order.Detail) error {
 	return fire(r.onOrderUnits, e, x)
 }
 
-func (r *Reporter) OnModify(k *Keep, e exchange.IBotExchange, x order.Modify) error {
+func (r *Historian) OnModify(k *Keep, e exchange.IBotExchange, x order.Modify) error {
 	return nil
 }
 
-func (r *Reporter) OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error {
+func (r *Historian) OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error {
 	return nil
 }
 
-func (r *Reporter) OnUnrecognized(k *Keep, e exchange.IBotExchange, x interface{}) error {
+func (r *Historian) OnUnrecognized(k *Keep, e exchange.IBotExchange, x interface{}) error {
 	return nil
 }
 
-func (r *Reporter) Deinit(k *Keep, e exchange.IBotExchange) error {
+func (r *Historian) Deinit(k *Keep, e exchange.IBotExchange) error {
 	return nil
 }
 
