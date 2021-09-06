@@ -24,7 +24,7 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 		return err
 	}
 
-	// Init strategy.
+	// Init strategy for this exchange.
 	if err := s.Init(k, e); err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
 		}
 	}
 
-	// Deinit strategy.
+	// Deinit strategy for this exchange.
 	if err := s.Deinit(k, e); err != nil {
 		return err
 	}
