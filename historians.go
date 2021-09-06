@@ -1,7 +1,9 @@
 package dola
 
 import (
+	"errors"
 	"fmt"
+	"time"
 
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
@@ -21,23 +23,37 @@ type Array interface {
 }
 
 type Historian struct {
-	Key   string
-	F     func(state Array)
-	state Array
+	// Stateless.
+	f        func(state Array)
+	interval time.Duration
+
+	// Stateful.
+	lastUpdate time.Time
+	state      Array
 }
 
-func NewHistorian(key string, n int, f func(state Array)) Historian {
-	state := NewCircularArray(n)
+func NewHistorian(interval time.Duration, stateLength int, f func(Array)) Historian {
+	state := NewCircularArray(stateLength)
 
 	return Historian{
-		Key:   key,
-		F:     f,
-		state: &state,
+		f:          f,
+		interval:   interval,
+		lastUpdate: time.Time{},
+		state:      &state,
 	}
 }
 
 func (u *Historian) Push(x interface{}) {
 	u.state.(*CircularArray).Push(x)
+}
+
+func (u *Historian) Update(now time.Time, x interface{}) {
+	if u.lastUpdate.Add(u.interval).Before(now) {
+		u.lastUpdate = now
+
+		u.state.(*CircularArray).Push(x)
+		u.f(u.state)
+	}
 }
 
 // Floats returns the State array, but casted to []float64.
@@ -67,6 +83,8 @@ func (u *Historian) Last() interface{} {
 // | HistorianStrategy |
 // +-------------------+
 
+var ErrUnknownEvent = errors.New("unknown event")
+
 type HistorianStrategy struct {
 	onPriceUnits map[string][]*Historian
 	onOrderUnits map[string][]*Historian
@@ -80,6 +98,29 @@ func NewHistorianStrategy() HistorianStrategy {
 }
 
 func (r *HistorianStrategy) BindOnPrice(unit *Historian) {
+}
+
+func (r *HistorianStrategy) AddHistorian(
+	exchangeName,
+	eventName string,
+	interval time.Duration,
+	stateLength int,
+	f func(Array),
+) error {
+	historian := NewHistorian(interval, stateLength, f)
+
+	switch eventName {
+	case "OnPrice":
+		xs := r.onPriceUnits[exchangeName]
+		r.onPriceUnits[exchangeName] = append(xs, &historian)
+	case "OnOrder":
+		xs := r.onOrderUnits[exchangeName]
+		r.onOrderUnits[exchangeName] = append(xs, &historian)
+	default:
+		return ErrUnknownEvent
+	}
+
+	return nil
 }
 
 // +----------+
@@ -98,7 +139,7 @@ func (r *HistorianStrategy) OnFunding(k *Keep, e exchange.IBotExchange, x stream
 }
 
 func (r *HistorianStrategy) OnPrice(k *Keep, e exchange.IBotExchange, x ticker.Price) error {
-	return fire(r.onPriceUnits, e, x)
+	return fire(r.onPriceUnits, e, x.LastUpdated, x)
 }
 
 func (r *HistorianStrategy) OnKline(k *Keep, e exchange.IBotExchange, x stream.KlineData) error {
@@ -110,7 +151,7 @@ func (r *HistorianStrategy) OnOrderBook(k *Keep, e exchange.IBotExchange, x orde
 }
 
 func (r *HistorianStrategy) OnOrder(k *Keep, e exchange.IBotExchange, x order.Detail) error {
-	return fire(r.onOrderUnits, e, x)
+	return fire(r.onOrderUnits, e, x.Date, x)
 }
 
 func (r *HistorianStrategy) OnModify(k *Keep, e exchange.IBotExchange, x order.Modify) error {
@@ -129,11 +170,15 @@ func (r *HistorianStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
 	return nil
 }
 
-func fire(units map[string][]*Historian, e exchange.IBotExchange, x interface{}) error {
+func fire(units map[string][]*Historian, e exchange.IBotExchange, now time.Time, x interface{}) error {
 	name := e.GetName()
+
+	// MT note: if historians do not get added and removed dynamically, this methodis
+	// completely fine, because:
+	//   1. reading from a map is MT-safe,
+	//   2. all On*() events for a singleexchange are invoked from the same thread.
 	for _, unit := range units[name] {
-		unit.Push(x)
-		unit.F(unit.state)
+		unit.Update(now, x)
 	}
 
 	return nil

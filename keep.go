@@ -77,6 +77,11 @@ func (b *KeepBuilder) Build() (*Keep, error) {
 		}
 	)
 
+	// Add historians: a special strategy that may keep multiple channels of
+	// historical data.
+	hist := NewHistorianStrategy()
+	keep.Root.Add("historian", &hist)
+
 	// Read config file.
 	What(log.Info().Str("path", filePath), "loading config file...")
 
@@ -116,6 +121,9 @@ type Keep struct {
 	registry        OrderRegistry
 }
 
+// Run is the entry point of all exchange data streams.  Strategy.On*() events for a
+// single exchange are invoked from the same thread.  Thus, if a strategy deals with
+// multiple exchanges simultaneously, there may be race conditions.
 func (bot *Keep) Run() {
 	var wg sync.WaitGroup
 
@@ -134,6 +142,26 @@ func (bot *Keep) Run() {
 	}
 
 	wg.Wait()
+}
+
+func (bot *Keep) AddHistorian(
+	exchangeName,
+	eventName string,
+	interval time.Duration,
+	stateLength int,
+	f func(Array),
+) error {
+	strategy, err := bot.Root.Get("historian")
+	if err != nil {
+		return err
+	}
+
+	hist, ok := strategy.(*HistorianStrategy)
+	if !ok {
+		panic("")
+	}
+
+	return hist.AddHistorian(exchangeName, eventName, interval, stateLength, f)
 }
 
 func (bot *Keep) GetOrderValue(exchangeName, orderID string) (OrderValue, bool) {
