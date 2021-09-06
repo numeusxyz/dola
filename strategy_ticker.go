@@ -76,6 +76,10 @@ func (s *TickerStrategy) OnUnrecognized(k *Keep, e exchange.IBotExchange, x inte
 	return nil
 }
 
+func (s *TickerStrategy) OnEvent(k *Keep, x interface{}) error {
+	return nil
+}
+
 func (s *TickerStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
 	pointer, loaded := s.tickers.LoadAndDelete(e.GetName())
 	if !loaded {

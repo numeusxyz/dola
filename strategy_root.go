@@ -111,6 +111,10 @@ func (m *RootStrategy) OnUnrecognized(k *Keep, e exchange.IBotExchange, x interf
 	return m.each(func(s Strategy) error { return s.OnUnrecognized(k, e, x) })
 }
 
+func (m *RootStrategy) OnEvent(k *Keep, x interface{}) error {
+	return m.each(func(s Strategy) error { return s.OnEvent(k, x) })
+}
+
 func (m *RootStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
 	return m.each(func(s Strategy) error { return s.Deinit(k, e) })
 }

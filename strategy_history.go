@@ -151,6 +151,10 @@ func (r *HistoryStrategy) OnUnrecognized(k *Keep, e exchange.IBotExchange, x int
 	return nil
 }
 
+func (r *HistoryStrategy) OnEvent(k *Keep, x interface{}) error {
+	return nil
+}
+
 func (r *HistoryStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
 	return nil
 }

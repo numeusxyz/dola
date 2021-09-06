@@ -91,6 +91,12 @@ func (v VerboseStrategy) OnUnrecognized(k *Keep, e exchange.IBotExchange, x inte
 	return nil
 }
 
+func (v VerboseStrategy) OnEvent(k *Keep, x interface{}) error {
+	Msg(log.Info().Str("what", "event").Interface("x", x))
+
+	return nil
+}
+
 func (v VerboseStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
 	Msg(log.Info().Str("e", e.GetName()))
 

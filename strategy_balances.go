@@ -139,6 +139,10 @@ func (b *BalancesStrategy) OnUnrecognized(k *Keep, e exchange.IBotExchange, x in
 	return nil
 }
 
+func (b *BalancesStrategy) OnEvent(k *Keep, x interface{}) error {
+	return nil
+}
+
 func (b *BalancesStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
 	return b.ticker.Init(k, e)
 }

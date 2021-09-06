@@ -36,5 +36,6 @@ type Strategy interface {
 	OnModify(k *Keep, e exchange.IBotExchange, x order.Modify) error
 	OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error
 	OnUnrecognized(k *Keep, e exchange.IBotExchange, x interface{}) error
+	OnEvent(k *Keep, x interface{}) error
 	Deinit(k *Keep, e exchange.IBotExchange) error
 }

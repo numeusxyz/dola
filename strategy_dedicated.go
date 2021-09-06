@@ -88,6 +88,10 @@ func (d *DedicatedStrategy) OnUnrecognized(k *Keep, e exchange.IBotExchange, x i
 	return nil
 }
 
+func (d *DedicatedStrategy) OnEvent(k *Keep, x interface{}) error {
+	return nil
+}
+
 func (d *DedicatedStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
 	if e.GetName() == d.Exchange {
 		return d.Wrapped.Deinit(k, e)
