@@ -45,6 +45,15 @@ func (m *RootStrategy) Delete(name string) (Strategy, error) {
 	return x.(Strategy), nil
 }
 
+func (m *RootStrategy) Get(name string) (Strategy, error) {
+	x, ok := m.strategies.Load(name)
+	if !ok {
+		return nil, ErrStrategyNotFound
+	}
+
+	return x.(Strategy), nil
+}
+
 // +----------+
 // | Strategy |
 // +----------+
