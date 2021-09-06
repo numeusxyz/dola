@@ -1,6 +1,7 @@
 package dola
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -18,6 +19,12 @@ import (
 // +------------------+
 // | BalancesStrategy |
 // +------------------+
+
+var (
+	ErrAccountIndexOutOfRange = errors.New("no account with this index exists")
+	ErrCurrencyNotFound       = errors.New("currency not found in holdings")
+	ErrHoldingsNotFound       = errors.New("holdings not found for exchange")
+)
 
 type BalancesStrategy struct {
 	balances sync.Map
@@ -55,6 +62,32 @@ func (b *BalancesStrategy) Load(exchangeName string) (holdings account.Holdings,
 	}
 
 	return
+}
+
+func (b *BalancesStrategy) Currency(exchangeName string, code string, index int) (account.Balance, error) {
+	holdings, loaded := b.Load(exchangeName)
+	if !loaded {
+		var empty account.Balance
+
+		return empty, ErrHoldingsNotFound
+	}
+
+	if len(holdings.Accounts) < index {
+		var empty account.Balance
+
+		return empty, ErrAccountIndexOutOfRange
+	}
+
+	sub := holdings.Accounts[index]
+	for _, balance := range sub.Currencies {
+		if balance.CurrencyName.String() == code {
+			return balance, nil
+		}
+	}
+
+	var empty account.Balance
+
+	return empty, ErrCurrencyNotFound
 }
 
 func (b *BalancesStrategy) tick(k *Keep, e exchange.IBotExchange) {
