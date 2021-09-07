@@ -1,3 +1,4 @@
+// The toolbelt is a set of helper functions that ease the cross usage of strategies.
 package dola
 
 import (
