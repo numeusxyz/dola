@@ -64,7 +64,7 @@ func (b *BalancesStrategy) Load(exchangeName string) (holdings account.Holdings,
 	return
 }
 
-func (b *BalancesStrategy) Currency(exchangeName string, code string, index int) (account.Balance, error) {
+func (b *BalancesStrategy) Currency(exchangeName string, code string, accountIndex int) (account.Balance, error) {
 	holdings, loaded := b.Load(exchangeName)
 	if !loaded {
 		var empty account.Balance
@@ -72,13 +72,13 @@ func (b *BalancesStrategy) Currency(exchangeName string, code string, index int)
 		return empty, ErrHoldingsNotFound
 	}
 
-	if len(holdings.Accounts) < index {
+	if len(holdings.Accounts) < accountIndex {
 		var empty account.Balance
 
 		return empty, ErrAccountIndexOutOfRange
 	}
 
-	sub := holdings.Accounts[index]
+	sub := holdings.Accounts[accountIndex]
 	for _, balance := range sub.Currencies {
 		if balance.CurrencyName.String() == code {
 			return balance, nil
