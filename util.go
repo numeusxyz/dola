@@ -206,17 +206,17 @@ func FileExists(path string) bool {
 // https://stackoverflow.com/questions/13378815 .
 //
 // Length of produced client order ID is encoded in the code.  See `seed`.
-func RandomOrderID(prefix string) (string, error) {
+func RandomOrderID(prefix string) string {
 	const seed = 24
 	xs := make([]byte, seed)
 
 	if _, err := rand.Read(xs); err != nil {
-		return "", err
+		panic(err)
 	}
 
 	ys := base64.URLEncoding.EncodeToString(xs)
 	offset := len(prefix)
 	id := fmt.Sprintf("%s%s", prefix, ys[offset:])
 
-	return id, nil
+	return id
 }
