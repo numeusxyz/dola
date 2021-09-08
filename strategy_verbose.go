@@ -14,6 +14,7 @@ type VerboseStrategy struct {
 	SilencePrice     bool
 	SilenceKline     bool
 	SilenceOrderBook bool
+	SilenceOrder     bool
 }
 
 func (v VerboseStrategy) Init(k *Keep, e exchange.IBotExchange) error {
@@ -68,7 +69,9 @@ func (v VerboseStrategy) OnOrderBook(k *Keep, e exchange.IBotExchange, x orderbo
 }
 
 func (v VerboseStrategy) OnOrder(k *Keep, e exchange.IBotExchange, x order.Detail) error {
-	Msg(log.Info().Str("e", e.GetName()).Interface("x", x))
+	if !v.SilenceOrder {
+		Msg(log.Info().Str("e", e.GetName()).Interface("x", x))
+	}
 
 	return nil
 }
