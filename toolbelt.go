@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
 )
 
 var (
@@ -28,4 +29,14 @@ func CurrencyBalance(k *Keep, exchangeName, currencyCode string, accountIndex in
 	}
 
 	return balances.Currency(exchangeName, currencyCode, accountIndex)
+}
+
+// Ticker casts a void* to ticker.Price.
+func Ticker(p interface{}) ticker.Price {
+	x, ok := p.(ticker.Price)
+	if !ok {
+		panic("")
+	}
+
+	return x
 }
