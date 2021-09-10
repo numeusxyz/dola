@@ -61,13 +61,13 @@ func (u *Historian) Update(now time.Time, x interface{}) {
 			return
 		}
 
-		// If this is the first ever update, just assign the epoch and move on.
-		// Otherwise the first update would be imbalanced.
-		if u.epoch == 0 {
-			u.epoch = epoch
+		// // If this is the first ever update, just assign the epoch and move on.
+		// // Otherwise the first update would be imbalanced.
+		// if u.epoch == 0 {
+		// 	u.epoch = epoch
 
-			return
-		}
+		// 	return
+		// }
 
 		// We move on with the state update.
 		u.epoch = epoch
