@@ -3,7 +3,8 @@ module github.com/numus-digital/dola
 go 1.17
 
 require (
-	github.com/rs/zerolog v1.24.0
+	github.com/google/go-cmp v0.5.6
+	github.com/rs/zerolog v1.25.0
 	github.com/thrasher-corp/gocryptotrader v0.0.0-20210827023134-c9ab0b1164b3
 	go.uber.org/multierr v1.7.0
 )
@@ -14,7 +15,6 @@ require (
 	github.com/friendsofgo/errors v0.9.2 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
