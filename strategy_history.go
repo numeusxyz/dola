@@ -31,18 +31,18 @@ type Historian struct {
 	interval time.Duration
 
 	// Stateful.
-	lastUpdate time.Time
-	state      Array
+	epoch int64
+	state Array
 }
 
 func NewHistorian(interval time.Duration, stateLength int, f func(Array)) Historian {
 	state := NewCircularArray(stateLength)
 
 	return Historian{
-		f:          f,
-		interval:   interval,
-		lastUpdate: time.Time{},
-		state:      &state,
+		f:        f,
+		interval: interval,
+		epoch:    0,
+		state:    &state,
 	}
 }
 
@@ -51,12 +51,30 @@ func (u *Historian) Push(x interface{}) {
 }
 
 func (u *Historian) Update(now time.Time, x interface{}) {
-	if u.lastUpdate.Add(u.interval).Before(now) {
-		u.lastUpdate = now
+	// If there is an interval specified, we should update once each interval.
+	if u.interval != 0 {
+		// Compute the current epoch.
+		epoch := now.UnixNano() / u.interval.Nanoseconds()
 
-		u.state.(*CircularArray).Push(x)
-		u.f(u.state)
+		// If we're in the same epoch as the last update, return.
+		if u.epoch == epoch {
+			return
+		}
+
+		// If this is the first ever update, just assign the epoch and move on.
+		// Otherwise the first update would be imbalanced.
+		if u.epoch == 0 {
+			u.epoch = epoch
+
+			return
+		}
+
+		// We move on with the state update.
+		u.epoch = epoch
 	}
+
+	u.state.(*CircularArray).Push(x)
+	u.f(u.state)
 }
 
 // Floats returns the State array, but casted to []float64.
@@ -158,10 +176,10 @@ func (r *HistoryStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
 func fire(units map[string][]*Historian, e exchange.IBotExchange, now time.Time, x interface{}) error {
 	name := e.GetName()
 
-	// MT note: if historians do not get added and removed dynamically, this methodis
-	// completely fine, because:
-	//   1. reading from a map is MT-safe,
-	//   2. all On*() events for a singleexchange are invoked from the same thread.
+	// MT note: if historians do not get added and removed dynamically, this method is
+	// completely safe to be used in a MT environment, because:
+	//   1. reading (without concurrent writing) a map is MT-safe,
+	//   2. all On*() events for a single exchange are invoked from the same thread.
 	for _, unit := range units[name] {
 		unit.Update(now, x)
 	}
