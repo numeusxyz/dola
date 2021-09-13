@@ -200,15 +200,19 @@ func (bot *Keep) getExchange(x interface{}) exchange.IBotExchange {
 	}
 }
 
-// +-------------------------+
-// | Keep: Exchange & orders |
-// +-------------------------+
+// +----------------------+
+// | Keep: Exchange state |
+// +----------------------+
 
 func (bot *Keep) GetActiveOrders(exchangeOrName interface{}, request order.GetOrdersRequest) (
 	[]order.Detail, error,
 ) {
 	return bot.getExchange(exchangeOrName).GetActiveOrders(&request)
 }
+
+// +------------------------+
+// | Keep: Order submission |
+// +------------------------+
 
 func (bot *Keep) SubmitOrder(exchangeOrName interface{}, submit order.Submit) (order.SubmitResponse, error) {
 	return bot.SubmitOrderUD(exchangeOrName, submit, nil)
@@ -248,6 +252,16 @@ func (bot *Keep) SubmitOrders(e exchange.IBotExchange, xs ...order.Submit) error
 
 	return wg.Wait()
 }
+
+func (bot *Keep) Modify(exchangeOrName interface{}, mod order.Modify) (order.Modify, error) {
+	e := bot.getExchange(exchangeOrName)
+
+	return e.ModifyOrder(&mod)
+}
+
+// +--------------------------+
+// | Keep: Order cancellation |
+// +--------------------------+
 
 func (bot *Keep) CancelAllOrders(exchangeOrName interface{}, assetType asset.Item, pair currency.Pair) (
 	order.CancelAllResponse, error,
