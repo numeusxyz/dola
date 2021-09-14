@@ -32,7 +32,7 @@ func ModifyOrder(k *Keep, e exchange.IBotExchange, mod order.Modify) (ans order.
 	// First, try to use the native exchange functionality.
 	ans, err = k.ModifyOrder(e, mod)
 	if err == nil {
-		return
+		return ans, nil
 	}
 
 	// If there is an error (even if that error says this exchange
