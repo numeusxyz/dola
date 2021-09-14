@@ -253,7 +253,7 @@ func (bot *Keep) SubmitOrders(e exchange.IBotExchange, xs ...order.Submit) error
 	return wg.Wait()
 }
 
-func (bot *Keep) Modify(exchangeOrName interface{}, mod order.Modify) (order.Modify, error) {
+func (bot *Keep) ModifyOrder(exchangeOrName interface{}, mod order.Modify) (order.Modify, error) {
 	e := bot.getExchange(exchangeOrName)
 
 	return e.ModifyOrder(&mod)
