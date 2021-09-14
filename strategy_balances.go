@@ -64,7 +64,7 @@ func (b *BalancesStrategy) Load(exchangeName string) (holdings account.Holdings,
 	return
 }
 
-func (b *BalancesStrategy) Currency(exchangeName string, code string, accountIndex int) (account.Balance, error) {
+func (b *BalancesStrategy) Currency(exchangeName string, code string, accountID string) (account.Balance, error) {
 	holdings, loaded := b.Load(exchangeName)
 	if !loaded {
 		var empty account.Balance
@@ -72,16 +72,13 @@ func (b *BalancesStrategy) Currency(exchangeName string, code string, accountInd
 		return empty, ErrHoldingsNotFound
 	}
 
-	if len(holdings.Accounts) < accountIndex {
-		var empty account.Balance
-
-		return empty, ErrAccountIndexOutOfRange
-	}
-
-	sub := holdings.Accounts[accountIndex]
-	for _, balance := range sub.Currencies {
-		if balance.CurrencyName.String() == code {
-			return balance, nil
+	for _, sub := range holdings.Accounts {
+		if sub.ID == accountID {
+			for _, balance := range sub.Currencies {
+				if balance.CurrencyName.String() == code {
+					return balance, nil
+				}
+			}
 		}
 	}
 
@@ -93,7 +90,7 @@ func (b *BalancesStrategy) Currency(exchangeName string, code string, accountInd
 func (b *BalancesStrategy) tick(k *Keep, e exchange.IBotExchange) {
 	holdings, err := e.UpdateAccountInfo(asset.Spot)
 	if err != nil {
-		What(log.Error().Str("exchange", e.GetName()).Err(err), "")
+		Msg(log.Error().Str("exchange", e.GetName()).Err(err))
 	}
 
 	b.Store(holdings)
@@ -142,3 +139,19 @@ func (b *BalancesStrategy) OnUnrecognized(k *Keep, e exchange.IBotExchange, x in
 func (b *BalancesStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
 	return b.ticker.Init(k, e)
 }
+
+// func zeroHoldings(holdings account.Holdings) bool {
+// 	if holdings.Exchange == "" {
+// 		return true
+// 	}
+
+// 	for _, a := range holdings.Accounts {
+// 		for _, c := range a.Currencies {
+// 			if c.TotalValue > 0 {
+// 				return false
+// 			}
+// 		}
+// 	}
+
+// 	return true
+// }
