@@ -2,6 +2,7 @@
 package dola
 
 import (
+	"context"
 	"errors"
 
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
@@ -46,9 +47,12 @@ func CurrencyBalance(k *Keep, exchangeName, currencyCode string, accountID strin
 	return balances.Currency(exchangeName, currencyCode, accountID)
 }
 
-func ModifyOrder(k *Keep, e exchange.IBotExchange, mod order.Modify) (ans order.Modify, err error) {
+func ModifyOrder(ctx context.Context,
+	k *Keep,
+	e exchange.IBotExchange,
+	mod order.Modify) (ans order.Modify, err error) {
 	// First, try to use the native exchange functionality.
-	ans, err = k.ModifyOrder(e, mod)
+	ans, err = k.ModifyOrder(ctx, e, mod)
 	if err == nil {
 		return ans, nil
 	}
@@ -61,7 +65,7 @@ func ModifyOrder(k *Keep, e exchange.IBotExchange, mod order.Modify) (ans order.
 	// error may be reported for a missing order, which is fine as
 	// we're submitting a new one anyways.
 	cancel := ModifyToCancel(mod)
-	_ = k.CancelOrder(e, cancel)
+	_ = k.CancelOrder(ctx, e, cancel)
 
 	// Prepare submission.
 	var (
@@ -73,10 +77,10 @@ func ModifyOrder(k *Keep, e exchange.IBotExchange, mod order.Modify) (ans order.
 	// the order with the same UserData.
 	value, loaded := k.GetOrderValue(e.GetName(), mod.ID)
 	if loaded {
-		response, err = k.SubmitOrderUD(e, submit, value.UserData)
+		response, err = k.SubmitOrderUD(ctx, e, submit, value.UserData)
 	} else {
 		// If there's not, just submit the order.
-		response, err = k.SubmitOrder(e, submit)
+		response, err = k.SubmitOrder(ctx, e, submit)
 	}
 
 	ans.Exchange = e.GetName()

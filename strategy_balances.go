@@ -1,6 +1,7 @@
 package dola
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -88,7 +89,7 @@ func (b *BalancesStrategy) Currency(exchangeName string, code string, accountID 
 }
 
 func (b *BalancesStrategy) tick(k *Keep, e exchange.IBotExchange) {
-	holdings, err := e.UpdateAccountInfo(asset.Spot)
+	holdings, err := e.UpdateAccountInfo(context.Background(), asset.Spot)
 	if err != nil {
 		Msg(log.Error().Str("exchange", e.GetName()).Err(err))
 	}

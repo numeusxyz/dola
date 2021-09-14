@@ -1,6 +1,7 @@
 package dola
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -28,6 +29,7 @@ type (
 type KeepBuilder struct {
 	augment             AugmentConfigFunc
 	balancesRefreshRate time.Duration
+	ctx                 context.Context
 	factory             ExchangeFactory
 	settings            engine.Settings
 }
@@ -38,6 +40,7 @@ func NewKeepBuilder() *KeepBuilder {
 	return &KeepBuilder{
 		augment:             nil,
 		balancesRefreshRate: 0,
+		ctx:                 context.Background(),
 		factory:             ExchangeFactory{},
 		settings:            settings,
 	}
@@ -51,6 +54,12 @@ func (b *KeepBuilder) Augment(f AugmentConfigFunc) *KeepBuilder {
 
 func (b *KeepBuilder) Balances(refreshRate time.Duration) *KeepBuilder {
 	b.balancesRefreshRate = refreshRate
+
+	return b
+}
+
+func (b *KeepBuilder) Context(ctx context.Context) *KeepBuilder {
+	b.ctx = ctx
 
 	return b
 }
@@ -83,6 +92,7 @@ func (b *KeepBuilder) Build() (*Keep, error) {
 			ExchangeManager: *engine.SetupExchangeManager(),
 			Root:            NewRootStrategy(),
 			Settings:        b.settings,
+			ctx:             b.ctx,
 			registry:        *NewOrderRegistry(),
 		}
 	)
@@ -134,6 +144,7 @@ type Keep struct {
 	ExchangeManager engine.ExchangeManager
 	Root            RootStrategy
 	Settings        engine.Settings
+	ctx             context.Context
 	registry        OrderRegistry
 }
 
@@ -158,6 +169,10 @@ func (bot *Keep) Run() {
 	}
 
 	wg.Wait()
+}
+
+func (bot *Keep) Context() context.Context {
+	return bot.ctx
 }
 
 func (bot *Keep) AddHistorian(
@@ -204,21 +219,26 @@ func (bot *Keep) getExchange(x interface{}) exchange.IBotExchange {
 // | Keep: Exchange state |
 // +----------------------+
 
-func (bot *Keep) GetActiveOrders(exchangeOrName interface{}, request order.GetOrdersRequest) (
+func (bot *Keep) GetActiveOrders(ctx context.Context, exchangeOrName interface{}, request order.GetOrdersRequest) (
 	[]order.Detail, error,
 ) {
-	return bot.getExchange(exchangeOrName).GetActiveOrders(&request)
+	return bot.getExchange(exchangeOrName).GetActiveOrders(ctx, &request)
 }
 
 // +------------------------+
 // | Keep: Order submission |
 // +------------------------+
 
-func (bot *Keep) SubmitOrder(exchangeOrName interface{}, submit order.Submit) (order.SubmitResponse, error) {
-	return bot.SubmitOrderUD(exchangeOrName, submit, nil)
+func (bot *Keep) SubmitOrder(ctx context.Context,
+	exchangeOrName interface{},
+	submit order.Submit) (order.SubmitResponse, error) {
+	return bot.SubmitOrderUD(ctx, exchangeOrName, submit, nil)
 }
 
-func (bot *Keep) SubmitOrderUD(exchangeOrName interface{}, submit order.Submit, userData interface{}) (
+func (bot *Keep) SubmitOrderUD(ctx context.Context,
+	exchangeOrName interface{},
+	submit order.Submit,
+	userData interface{}) (
 	order.SubmitResponse, error,
 ) {
 	e := bot.getExchange(exchangeOrName)
@@ -228,7 +248,7 @@ func (bot *Keep) SubmitOrderUD(exchangeOrName interface{}, submit order.Submit, 
 		submit.Exchange = e.GetName()
 	}
 
-	resp, err := e.SubmitOrder(&submit)
+	resp, err := e.SubmitOrder(ctx, &submit)
 	if err == nil {
 		if !bot.registry.Store(e.GetName(), resp, userData) {
 			return resp, ErrOrdersAlreadyExists
@@ -238,14 +258,14 @@ func (bot *Keep) SubmitOrderUD(exchangeOrName interface{}, submit order.Submit, 
 	return resp, err
 }
 
-func (bot *Keep) SubmitOrders(e exchange.IBotExchange, xs ...order.Submit) error {
+func (bot *Keep) SubmitOrders(ctx context.Context, e exchange.IBotExchange, xs ...order.Submit) error {
 	var wg ErrorWaitGroup
 
 	for _, x := range xs {
 		wg.Add(1)
 
 		go func(x order.Submit) {
-			_, err := bot.SubmitOrder(e, x)
+			_, err := bot.SubmitOrder(ctx, e, x)
 			wg.Done(err)
 		}(x)
 	}
@@ -253,17 +273,22 @@ func (bot *Keep) SubmitOrders(e exchange.IBotExchange, xs ...order.Submit) error
 	return wg.Wait()
 }
 
-func (bot *Keep) ModifyOrder(exchangeOrName interface{}, mod order.Modify) (order.Modify, error) {
+func (bot *Keep) ModifyOrder(ctx context.Context,
+	exchangeOrName interface{},
+	mod order.Modify) (order.Modify, error) {
 	e := bot.getExchange(exchangeOrName)
 
-	return e.ModifyOrder(&mod)
+	return e.ModifyOrder(ctx, &mod)
 }
 
 // +--------------------------+
 // | Keep: Order cancellation |
 // +--------------------------+
 
-func (bot *Keep) CancelAllOrders(exchangeOrName interface{}, assetType asset.Item, pair currency.Pair) (
+func (bot *Keep) CancelAllOrders(ctx context.Context,
+	exchangeOrName interface{},
+	assetType asset.Item,
+	pair currency.Pair) (
 	order.CancelAllResponse, error,
 ) {
 	e := bot.getExchange(exchangeOrName)
@@ -274,20 +299,23 @@ func (bot *Keep) CancelAllOrders(exchangeOrName interface{}, assetType asset.Ite
 	cancel.Pair = pair
 	cancel.Symbol = pair.String()
 
-	return e.CancelAllOrders(&cancel)
+	return e.CancelAllOrders(ctx, &cancel)
 }
 
-func (bot *Keep) CancelOrder(exchangeOrName interface{}, x order.Cancel) error {
+func (bot *Keep) CancelOrder(ctx context.Context, exchangeOrName interface{}, x order.Cancel) error {
 	e := bot.getExchange(exchangeOrName)
 
 	if x.Exchange == "" {
 		x.Exchange = e.GetName()
 	}
 
-	return e.CancelOrder(&x)
+	return e.CancelOrder(ctx, &x)
 }
 
-func (bot *Keep) CancelOrdersByPrefix(exchangeOrName interface{}, x order.Cancel, prefix string) error {
+func (bot *Keep) CancelOrdersByPrefix(ctx context.Context,
+	exchangeOrName interface{},
+	x order.Cancel,
+	prefix string) error {
 	request := order.GetOrdersRequest{
 		Type:      x.Type,
 		Side:      x.Side,
@@ -298,7 +326,7 @@ func (bot *Keep) CancelOrdersByPrefix(exchangeOrName interface{}, x order.Cancel
 		AssetType: x.AssetType,
 	}
 
-	xs, err := bot.GetActiveOrders(exchangeOrName, request)
+	xs, err := bot.GetActiveOrders(ctx, exchangeOrName, request)
 	if err != nil {
 		return err
 	}
@@ -309,7 +337,7 @@ func (bot *Keep) CancelOrdersByPrefix(exchangeOrName interface{}, x order.Cancel
 		// Date is left empty on purpose just to make sure no matching by date is
 		// performed.  All the rest is populated as we don't really know which
 		// exchange expects what.
-		err := bot.CancelOrder(exchangeOrName, order.Cancel{
+		err := bot.CancelOrder(ctx, exchangeOrName, order.Cancel{
 			Price:         x.Price,
 			Amount:        x.Amount,
 			Exchange:      bot.getExchange(exchangeOrName).GetName(),
@@ -489,7 +517,7 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 			useAsset = assetTypes[a]
 			break
 		}
-		err = exch.ValidateCredentials(useAsset)
+		err = exch.ValidateCredentials(context.Background(), useAsset)
 		if err != nil {
 			gctlog.Warnf(gctlog.ExchangeSys,
 				"%s: Cannot validate credentials, authenticated support has been disabled, Error: %s\n",
