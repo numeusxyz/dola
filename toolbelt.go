@@ -4,7 +4,6 @@ package dola
 import (
 	"errors"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
@@ -13,7 +12,7 @@ import (
 
 var ErrNeedBalancesStrategy = errors.New("Keep should be configured with balances support")
 
-func CurrencyBalance(k *Keep, exchangeName, currencyCode string, accountIndex int) (account.Balance, error) {
+func CurrencyBalance(k *Keep, exchangeName, currencyCode string, accountID string) (account.Balance, error) {
 	st, err := k.Root.Get("balances")
 	if errors.Is(err, ErrStrategyNotFound) {
 		var empty account.Balance
@@ -26,49 +25,48 @@ func CurrencyBalance(k *Keep, exchangeName, currencyCode string, accountIndex in
 		panic("casting failed")
 	}
 
-	return balances.Currency(exchangeName, currencyCode, accountIndex)
+	return balances.Currency(exchangeName, currencyCode, accountID)
 }
 
-func ModifyOrder(k *Keep, e exchange.IBotExchange, mod order.Modify) error {
+func ModifyOrder(k *Keep, e exchange.IBotExchange, mod order.Modify) (ans order.Modify, err error) {
 	// First, try to use the native exchange functionality.
-	_, err := k.Modify(e, mod)
+	ans, err = k.ModifyOrder(e, mod)
 	if err == nil {
-		return nil
+		return
 	}
 
-	// There is an error.  If it's different than
-	// ErrFunctionNotSupported, then modification is (apparently)
-	// supported, but failed.
-	if !errors.Is(err, common.ErrFunctionNotSupported) {
-		return err
-	}
+	// If there is an error (even if that error says this exchange
+	// implementation does not support order modifications), we
+	// fall back to cancel + submit.
 
-	// Modification is not supported.  Fall back to cancellation
-	// and submission.
-
-	// First, cancel the order.
+	// We do not check the cancellation error on purpose as an
+	// error may be reported for a missing order, which is fine as
+	// we're submitting a new one anyways.
 	cancel := ModifyToCancel(mod)
-	if err := k.CancelOrder(e, cancel); err != nil {
-		return err
-	}
+	_ = k.CancelOrder(e, cancel)
 
-	// Prepare submission struct.
-	submit := ModifyToSubmit(mod)
+	// Prepare submission.
+	var (
+		submit   = ModifyToSubmit(mod)
+		response order.SubmitResponse
+	)
 
-	// Second, check if there is a UserData associated with that
-	// order.  If there is, resubmit the order with the same
-	// UserData.
+	// If there is a UserData associated with that order, resubmit
+	// the order with the same UserData.
 	value, loaded := k.GetOrderValue(e.GetName(), mod.ID)
 	if loaded {
-		_, err := k.SubmitOrderUD(e, submit, value.UserData)
-
-		return err
+		response, err = k.SubmitOrderUD(e, submit, value.UserData)
+	} else {
+		// If there's not, just submit the order.
+		response, err = k.SubmitOrder(e, submit)
 	}
 
-	// If there's not, just submit the order.
-	_, err = k.SubmitOrder(e, submit)
+	ans.Exchange = e.GetName()
+	ans.AssetType = submit.AssetType
+	ans.Pair = submit.Pair
+	ans.ID = response.OrderID
 
-	return err
+	return ans, err
 }
 
 // Ticker casts a void* to ticker.Price.
