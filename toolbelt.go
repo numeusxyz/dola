@@ -12,6 +12,24 @@ import (
 
 var ErrNeedBalancesStrategy = errors.New("Keep should be configured with balances support")
 
+func Holdings(k *Keep, exchangeName string) (account.Holdings, error) {
+	st, err := k.Root.Get("balances")
+	if errors.Is(err, ErrStrategyNotFound) {
+		var empty account.Holdings
+
+		return empty, ErrNeedBalancesStrategy
+	}
+
+	balances, ok := st.(*BalancesStrategy)
+	if !ok {
+		panic("cast failed")
+	}
+
+    holdings, _ := balances.Load(exchangeName)
+
+    return holdings, nil
+}
+
 func CurrencyBalance(k *Keep, exchangeName, currencyCode string, accountID string) (account.Balance, error) {
 	st, err := k.Root.Get("balances")
 	if errors.Is(err, ErrStrategyNotFound) {
