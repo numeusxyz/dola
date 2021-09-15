@@ -1,7 +1,6 @@
 package dola
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -29,7 +28,6 @@ type (
 type KeepBuilder struct {
 	augment             AugmentConfigFunc
 	balancesRefreshRate time.Duration
-	ctx                 context.Context
 	factory             ExchangeFactory
 	settings            engine.Settings
 }
@@ -40,7 +38,6 @@ func NewKeepBuilder() *KeepBuilder {
 	return &KeepBuilder{
 		augment:             nil,
 		balancesRefreshRate: 0,
-		ctx:                 context.Background(),
 		factory:             ExchangeFactory{},
 		settings:            settings,
 	}
@@ -54,12 +51,6 @@ func (b *KeepBuilder) Augment(f AugmentConfigFunc) *KeepBuilder {
 
 func (b *KeepBuilder) Balances(refreshRate time.Duration) *KeepBuilder {
 	b.balancesRefreshRate = refreshRate
-
-	return b
-}
-
-func (b *KeepBuilder) Context(ctx context.Context) *KeepBuilder {
-	b.ctx = ctx
 
 	return b
 }
@@ -92,7 +83,6 @@ func (b *KeepBuilder) Build() (*Keep, error) {
 			ExchangeManager: *engine.SetupExchangeManager(),
 			Root:            NewRootStrategy(),
 			Settings:        b.settings,
-			ctx:             b.ctx,
 			registry:        *NewOrderRegistry(),
 		}
 	)
@@ -144,7 +134,6 @@ type Keep struct {
 	ExchangeManager engine.ExchangeManager
 	Root            RootStrategy
 	Settings        engine.Settings
-	ctx             context.Context
 	registry        OrderRegistry
 }
 
