@@ -13,6 +13,7 @@ import (
 	"github.com/thrasher-corp/gocryptotrader/currency"
 	"github.com/thrasher-corp/gocryptotrader/engine"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"go.uber.org/multierr"
@@ -223,7 +224,7 @@ func (bot *Keep) getExchange(x interface{}) exchange.IBotExchange {
 func (bot *Keep) GetActiveOrders(exchangeOrName interface{}, request order.GetOrdersRequest) (
 	[]order.Detail, error,
 ) {
-	return bot.getExchange(exchangeOrName).GetActiveOrders(&request)
+	return bot.getExchange(exchangeOrName).GetActiveOrders(bot.ctx, &request)
 }
 
 // +------------------------+
@@ -244,7 +245,7 @@ func (bot *Keep) SubmitOrderUD(exchangeOrName interface{}, submit order.Submit, 
 		submit.Exchange = e.GetName()
 	}
 
-	resp, err := e.SubmitOrder(&submit)
+	resp, err := e.SubmitOrder(bot.ctx, &submit)
 	if err == nil {
 		if !bot.registry.Store(e.GetName(), resp, userData) {
 			return resp, ErrOrdersAlreadyExists
@@ -272,7 +273,7 @@ func (bot *Keep) SubmitOrders(e exchange.IBotExchange, xs ...order.Submit) error
 func (bot *Keep) ModifyOrder(exchangeOrName interface{}, mod order.Modify) (order.Modify, error) {
 	e := bot.getExchange(exchangeOrName)
 
-	return e.ModifyOrder(&mod)
+	return e.ModifyOrder(bot.ctx, &mod)
 }
 
 // +--------------------------+
@@ -290,7 +291,7 @@ func (bot *Keep) CancelAllOrders(exchangeOrName interface{}, assetType asset.Ite
 	cancel.Pair = pair
 	cancel.Symbol = pair.String()
 
-	return e.CancelAllOrders(&cancel)
+	return e.CancelAllOrders(bot.ctx, &cancel)
 }
 
 func (bot *Keep) CancelOrder(exchangeOrName interface{}, x order.Cancel) error {
@@ -300,7 +301,7 @@ func (bot *Keep) CancelOrder(exchangeOrName interface{}, x order.Cancel) error {
 		x.Exchange = e.GetName()
 	}
 
-	return e.CancelOrder(&x)
+	return e.CancelOrder(bot.ctx, &x)
 }
 
 func (bot *Keep) CancelOrdersByPrefix(exchangeOrName interface{}, x order.Cancel, prefix string) error {
@@ -348,6 +349,14 @@ func (bot *Keep) CancelOrdersByPrefix(exchangeOrName interface{}, x order.Cancel
 	}
 
 	return multi
+}
+
+// +------------------------+
+// | Keep: Exchange methods |
+// +------------------------+
+
+func (bot *Keep) UpdateAccountInfo(exchangeOrName interface{}, assetType asset.Item) (account.Holdings, error) {
+	return bot.getExchange(exchangeOrName).UpdateAccountInfo(bot.ctx, assetType)
 }
 
 // +-------------------------+
@@ -400,6 +409,22 @@ var (
 	ErrNoExchangesLoaded    = errors.New("no exchanges have been loaded")
 	ErrExchangeFailedToLoad = errors.New("exchange failed to load")
 )
+
+func (bot *Keep) GetExchanges() []exchange.IBotExchange {
+	return bot.getExchanges(GCTLog{nil})
+}
+
+// getExchanges is an unchanged copy of Engine.GetExchange.
+//
+//nolint
+func (bot *Keep) getExchanges(gctlog GCTLog) []exchange.IBotExchange {
+	exch, err := bot.ExchangeManager.GetExchanges()
+	if err != nil {
+		gctlog.Warnf(gctlog.ExchangeSys, "Cannot get exchanges: %v", err)
+		return []exchange.IBotExchange{}
+	}
+	return exch
+}
 
 // loadExchange is an unchanged copy of Engine.LoadExchange.
 //
@@ -505,7 +530,7 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 			useAsset = assetTypes[a]
 			break
 		}
-		err = exch.ValidateCredentials(useAsset)
+		err = exch.ValidateCredentials(bot.ctx, useAsset)
 		if err != nil {
 			gctlog.Warnf(gctlog.ExchangeSys,
 				"%s: Cannot validate credentials, authenticated support has been disabled, Error: %s\n",
@@ -560,7 +585,7 @@ func (bot *Keep) setupExchanges(gctlog GCTLog) error {
 		}(configs[x])
 	}
 	wg.Wait()
-	if len(bot.ExchangeManager.GetExchanges()) == 0 {
+	if len(bot.GetExchanges()) == 0 {
 		return ErrNoExchangesLoaded
 	}
 	return nil
