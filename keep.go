@@ -154,7 +154,12 @@ type Keep struct {
 func (bot *Keep) Run() {
 	var wg sync.WaitGroup
 
-	for _, x := range bot.ExchangeManager.GetExchanges() {
+	exchanges, err := bot.ExchangeManager.GetExchanges()
+	if err != nil {
+		panic(err)
+	}
+
+	for _, x := range exchanges {
 		wg.Add(1)
 
 		go func(x exchange.IBotExchange) {
