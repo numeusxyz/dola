@@ -25,9 +25,9 @@ func Holdings(k *Keep, exchangeName string) (account.Holdings, error) {
 		panic("cast failed")
 	}
 
-    holdings, _ := balances.Load(exchangeName)
+	holdings, _ := balances.Load(exchangeName)
 
-    return holdings, nil
+	return holdings, nil
 }
 
 func CurrencyBalance(k *Keep, exchangeName, currencyCode string, accountID string) (account.Balance, error) {
