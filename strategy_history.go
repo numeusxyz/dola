@@ -142,7 +142,14 @@ func (r *HistoryStrategy) OnFunding(k *Keep, e exchange.IBotExchange, x stream.F
 }
 
 func (r *HistoryStrategy) OnPrice(k *Keep, e exchange.IBotExchange, x ticker.Price) error {
-	return fire(r.onPriceUnits, e, x.LastUpdated, x)
+	// some exchanges (eg. Kraken) don't provide the update timestamp so we fallback to `now` when
+	// unavailable
+	lastUpdated := x.LastUpdated
+	if lastUpdated.IsZero() {
+		lastUpdated = time.Now()
+	}
+
+	return fire(r.onPriceUnits, e, lastUpdated, x)
 }
 
 func (r *HistoryStrategy) OnKline(k *Keep, e exchange.IBotExchange, x stream.KlineData) error {
