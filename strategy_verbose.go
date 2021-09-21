@@ -1,6 +1,8 @@
 package dola
 
 import (
+	"context"
+
 	"github.com/rs/zerolog/log"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
@@ -17,7 +19,7 @@ type VerboseStrategy struct {
 	SilenceOrder     bool
 }
 
-func (v VerboseStrategy) Init(k *Keep, e exchange.IBotExchange) error {
+func (v VerboseStrategy) Init(ctx context.Context, k *Keep, e exchange.IBotExchange) error {
 	Msg(log.Info().Str("e", e.GetName()))
 
 	return nil

@@ -1,6 +1,8 @@
 package dola
 
 import (
+	"context"
+
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
@@ -16,9 +18,9 @@ type DedicatedStrategy struct {
 	Wrapped  Strategy
 }
 
-func (d *DedicatedStrategy) Init(k *Keep, e exchange.IBotExchange) error {
+func (d *DedicatedStrategy) Init(ctx context.Context, k *Keep, e exchange.IBotExchange) error {
 	if e.GetName() == d.Exchange {
-		return d.Wrapped.Init(k, e)
+		return d.Wrapped.Init(ctx, k, e)
 	}
 
 	return nil
