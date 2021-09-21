@@ -1,6 +1,7 @@
 package dola
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -75,8 +76,8 @@ func (m *RootStrategy) each(f func(Strategy) error) error {
 	return err
 }
 
-func (m *RootStrategy) Init(k *Keep, e exchange.IBotExchange) error {
-	return m.each(func(s Strategy) error { return s.Init(k, e) })
+func (m *RootStrategy) Init(ctx context.Context, k *Keep, e exchange.IBotExchange) error {
+	return m.each(func(s Strategy) error { return s.Init(ctx, k, e) })
 }
 
 func (m *RootStrategy) OnFunding(k *Keep, e exchange.IBotExchange, x stream.FundingData) error {

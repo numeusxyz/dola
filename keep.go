@@ -29,7 +29,6 @@ type (
 type KeepBuilder struct {
 	augment             AugmentConfigFunc
 	balancesRefreshRate time.Duration
-	ctx                 context.Context
 	factory             ExchangeFactory
 	settings            engine.Settings
 }
@@ -40,7 +39,6 @@ func NewKeepBuilder() *KeepBuilder {
 	return &KeepBuilder{
 		augment:             nil,
 		balancesRefreshRate: 0,
-		ctx:                 context.Background(),
 		factory:             ExchangeFactory{},
 		settings:            settings,
 	}
@@ -54,12 +52,6 @@ func (b *KeepBuilder) Augment(f AugmentConfigFunc) *KeepBuilder {
 
 func (b *KeepBuilder) Balances(refreshRate time.Duration) *KeepBuilder {
 	b.balancesRefreshRate = refreshRate
-
-	return b
-}
-
-func (b *KeepBuilder) Context(ctx context.Context) *KeepBuilder {
-	b.ctx = ctx
 
 	return b
 }
@@ -92,7 +84,6 @@ func (b *KeepBuilder) Build() (*Keep, error) {
 			ExchangeManager: *engine.SetupExchangeManager(),
 			Root:            NewRootStrategy(),
 			Settings:        b.settings,
-			ctx:             b.ctx,
 			registry:        *NewOrderRegistry(),
 		}
 	)
@@ -144,14 +135,13 @@ type Keep struct {
 	ExchangeManager engine.ExchangeManager
 	Root            RootStrategy
 	Settings        engine.Settings
-	ctx             context.Context
 	registry        OrderRegistry
 }
 
 // Run is the entry point of all exchange data streams.  Strategy.On*() events for a
 // single exchange are invoked from the same thread.  Thus, if a strategy deals with
 // multiple exchanges simultaneously, there may be race conditions.
-func (bot *Keep) Run() {
+func (bot *Keep) Run(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	exchgs, err := bot.ExchangeManager.GetExchanges()
@@ -165,7 +155,7 @@ func (bot *Keep) Run() {
 		go func(x exchange.IBotExchange) {
 			defer wg.Done()
 
-			err := Stream(bot, x, &bot.Root)
+			err := Stream(ctx, bot, x, &bot.Root)
 
 			// This function is never expected to return.  I'm panic()king
 			// just to maintain the invariant.
@@ -174,10 +164,6 @@ func (bot *Keep) Run() {
 	}
 
 	wg.Wait()
-}
-
-func (bot *Keep) Context() context.Context {
-	return bot.ctx
 }
 
 func (bot *Keep) AddHistorian(

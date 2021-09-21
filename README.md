@@ -52,7 +52,7 @@ import (
 func main() {
 	keep, _ := dola.NewKeepBuilder().Build()
 	keep.Root.Add("verbose", dola.VerboseStrategy{})
-	keep.Run()
+	keep.Run(context.Background())
 }
 
 ```

@@ -1,6 +1,7 @@
 package dola
 
 import (
+	"context"
 	"time"
 
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
@@ -27,7 +28,7 @@ type Trade struct {
 }
 
 type Strategy interface {
-	Init(k *Keep, e exchange.IBotExchange) error
+	Init(ctx context.Context, k *Keep, e exchange.IBotExchange) error
 	OnFunding(k *Keep, e exchange.IBotExchange, x stream.FundingData) error
 	OnPrice(k *Keep, e exchange.IBotExchange, x ticker.Price) error
 	OnKline(k *Keep, e exchange.IBotExchange, x stream.KlineData) error

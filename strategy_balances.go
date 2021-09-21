@@ -101,8 +101,8 @@ func (b *BalancesStrategy) tick(k *Keep, e exchange.IBotExchange) {
 // | Strategy interface |
 // +--------------------+
 
-func (b *BalancesStrategy) Init(k *Keep, e exchange.IBotExchange) error {
-	return b.ticker.Init(k, e)
+func (b *BalancesStrategy) Init(ctx context.Context, k *Keep, e exchange.IBotExchange) error {
+	return b.ticker.Init(ctx, k, e)
 }
 
 func (b *BalancesStrategy) OnFunding(k *Keep, e exchange.IBotExchange, x stream.FundingData) error {
@@ -138,7 +138,7 @@ func (b *BalancesStrategy) OnUnrecognized(k *Keep, e exchange.IBotExchange, x in
 }
 
 func (b *BalancesStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
-	return b.ticker.Init(k, e)
+	return b.ticker.Deinit(k, e)
 }
 
 // func zeroHoldings(holdings account.Holdings) bool {

@@ -1,6 +1,7 @@
 package dola
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -18,14 +19,14 @@ var (
 	ErrWebsocketNotEnabled   = errors.New("websocket is not enabled")
 )
 
-func Stream(k *Keep, e exchange.IBotExchange, s Strategy) error {
+func Stream(ctx context.Context, k *Keep, e exchange.IBotExchange, s Strategy) error {
 	ws, err := openWebsocket(e)
 	if err != nil {
 		return err
 	}
 
 	// Init strategy for this exchange.
-	if err := s.Init(k, e); err != nil {
+	if err := s.Init(ctx, k, e); err != nil {
 		return err
 	}
 
