@@ -154,7 +154,12 @@ type Keep struct {
 func (bot *Keep) Run() {
 	var wg sync.WaitGroup
 
-	for _, x := range bot.ExchangeManager.GetExchanges() {
+	exchgs, err := bot.ExchangeManager.GetExchanges()
+	if err != nil {
+		panic(err)
+	}
+
+	for _, x := range exchgs {
 		wg.Add(1)
 
 		go func(x exchange.IBotExchange) {
@@ -572,8 +577,11 @@ func (bot *Keep) setupExchanges(gctlog GCTLog) error {
 		}(configs[x])
 	}
 	wg.Wait()
-	if len(bot.ExchangeManager.GetExchanges()) == 0 {
+
+	exchgs, err := bot.ExchangeManager.GetExchanges()
+	if err != nil || len(exchgs) == 0 {
 		return ErrNoExchangesLoaded
 	}
+
 	return nil
 }
