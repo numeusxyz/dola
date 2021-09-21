@@ -404,9 +404,24 @@ var (
 	ErrExchangeFailedToLoad = errors.New("exchange failed to load")
 )
 
+// getExchange is an unchanged copy of Engine.GetExchanges.
+//nolint
+func (bot *Keep) getExchanges(gctlog GCTLog) []exchange.IBotExchange {
+	exch, err := bot.ExchangeManager.GetExchanges()
+	if err != nil {
+		gctlog.Warnf(gctlog.ExchangeSys, "Cannot get exchanges: %v", err)
+		return []exchange.IBotExchange{}
+	}
+	return exch
+}
+
+func (bot *Keep) GetExchanges() []exchange.IBotExchange {
+	return bot.getExchanges(GCTLog{nil})
+}
+
 // loadExchange is an unchanged copy of Engine.LoadExchange.
 //
-// nolint
+//nolint
 func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) error {
 	exch, err := bot.ExchangeManager.NewExchangeByName(name)
 	if err != nil {
@@ -508,7 +523,7 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 			useAsset = assetTypes[a]
 			break
 		}
-		err = exch.ValidateCredentials(context.Background(), useAsset)
+		err = exch.ValidateCredentials(context.TODO(), useAsset)
 		if err != nil {
 			gctlog.Warnf(gctlog.ExchangeSys,
 				"%s: Cannot validate credentials, authenticated support has been disabled, Error: %s\n",
@@ -534,12 +549,40 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 
 // setupExchanges is an (almost) unchanged copy of Engine.SetupExchanges.
 //
-// nolint
+//nolint
 func (bot *Keep) setupExchanges(gctlog GCTLog) error {
 	var wg sync.WaitGroup
 	configs := bot.Config.GetAllExchangeConfigs()
-
-	// DELETED: parameters -> dryRun...()
+	// if bot.Settings.EnableAllPairs {
+	// 	bot.dryRunParamInteraction("enableallpairs")
+	// }
+	// if bot.Settings.EnableAllExchanges {
+	// 	bot.dryRunParamInteraction("enableallexchanges")
+	// }
+	// if bot.Settings.EnableExchangeVerbose {
+	// 	bot.dryRunParamInteraction("exchangeverbose")
+	// }
+	// if bot.Settings.EnableExchangeWebsocketSupport {
+	// 	bot.dryRunParamInteraction("exchangewebsocketsupport")
+	// }
+	// if bot.Settings.EnableExchangeAutoPairUpdates {
+	// 	bot.dryRunParamInteraction("exchangeautopairupdates")
+	// }
+	// if bot.Settings.DisableExchangeAutoPairUpdates {
+	// 	bot.dryRunParamInteraction("exchangedisableautopairupdates")
+	// }
+	// if bot.Settings.HTTPUserAgent != "" {
+	// 	bot.dryRunParamInteraction("httpuseragent")
+	// }
+	// if bot.Settings.HTTPProxy != "" {
+	// 	bot.dryRunParamInteraction("httpproxy")
+	// }
+	// if bot.Settings.HTTPTimeout != exchange.DefaultHTTPTimeout {
+	// 	bot.dryRunParamInteraction("httptimeout")
+	// }
+	// if bot.Settings.EnableExchangeHTTPDebugging {
+	// 	bot.dryRunParamInteraction("exchangehttpdebugging")
+	// }
 
 	for x := range configs {
 		if !configs[x].Enabled && !bot.Settings.EnableAllExchanges {
@@ -563,11 +606,8 @@ func (bot *Keep) setupExchanges(gctlog GCTLog) error {
 		}(configs[x])
 	}
 	wg.Wait()
-
-	exchgs, err := bot.ExchangeManager.GetExchanges()
-	if err != nil || len(exchgs) == 0 {
+	if len(bot.GetExchanges()) == 0 {
 		return ErrNoExchangesLoaded
 	}
-
 	return nil
 }
