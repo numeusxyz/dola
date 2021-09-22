@@ -3,12 +3,12 @@ package dola
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/thrasher-corp/gocryptotrader/currency"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
@@ -24,18 +24,21 @@ import (
 
 var (
 	ErrAccountIndexOutOfRange = errors.New("no account with this index exists")
-	ErrCurrencyNotFound       = errors.New("currency not found in holdings")
 	ErrHoldingsNotFound       = errors.New("holdings not found for exchange")
+	ErrAccountNotFound        = errors.New("account not found in holdings")
+	ErrAssetNotFound          = errors.New("asset not found in account")
+	ErrCurrencyNotFound       = errors.New("currency not found in asset")
 )
 
 type BalancesStrategy struct {
-	balances sync.Map
+	// holdings maps an exchange name to its holdings
+	holdings sync.Map
 	ticker   TickerStrategy
 }
 
 func NewBalancesStrategy(refreshRate time.Duration) Strategy {
 	b := &BalancesStrategy{
-		balances: sync.Map{},
+		holdings: sync.Map{},
 		ticker: TickerStrategy{
 			Interval: refreshRate,
 			TickFunc: nil,
@@ -47,57 +50,57 @@ func NewBalancesStrategy(refreshRate time.Duration) Strategy {
 	return b
 }
 
-func (b *BalancesStrategy) Store(holdings account.Holdings) {
-	key := strings.ToLower(holdings.Exchange)
-	b.balances.Store(key, holdings)
-}
-
-func (b *BalancesStrategy) Load(exchangeName string) (holdings account.Holdings, loaded bool) {
+func (b *BalancesStrategy) ExchangeHoldings(exchangeName string) (*ExchangeHoldings, error) {
 	key := strings.ToLower(exchangeName)
-	pointer, loaded := b.balances.Load(key)
 
-	if loaded {
-		var ok bool
-		holdings, ok = pointer.(account.Holdings)
-
-		if !ok {
-			panic(fmt.Sprintf("have %T, want account.Holdings", pointer))
+	if ptr, ok := b.holdings.Load(key); ok {
+		if h, ok := ptr.(*ExchangeHoldings); ok {
+			return h, nil
 		}
 	}
 
-	return
+	return nil, ErrHoldingsNotFound
 }
 
-func (b *BalancesStrategy) Currency(exchangeName string, code string, accountID string) (account.Balance, error) {
-	holdings, loaded := b.Load(exchangeName)
-	if !loaded {
-		var empty account.Balance
+func (b *BalancesStrategy) tick(k *Keep, e exchange.IBotExchange) {
+	// create a new holdings struct that we'll fill out and then
+	// atomically update
+	holdings := NewExchangeHoldings()
 
-		return empty, ErrHoldingsNotFound
-	}
+	// go through all the asset types, fetch account info for each of them
+	// and aggregate them into dola.Holdings
+	for _, assetType := range e.GetAssetTypes(true) {
+		h, err := e.UpdateAccountInfo(context.Background(), assetType)
+		if err != nil {
+			Msg(log.Error().Str("exchange", e.GetName()).Err(err))
 
-	for _, sub := range holdings.Accounts {
-		if sub.ID == accountID {
-			for _, balance := range sub.Currencies {
-				if balance.CurrencyName.String() == code {
-					return balance, nil
+			continue
+		}
+
+		for _, subAccount := range h.Accounts {
+			if _, ok := holdings.Accounts[subAccount.ID]; !ok {
+				holdings.Accounts[subAccount.ID] = SubAccount{
+					ID:       subAccount.ID,
+					Balances: make(map[asset.Item]map[currency.Code]CurrencyBalance),
+				}
+			}
+
+			if _, ok := holdings.Accounts[subAccount.ID].Balances[assetType]; !ok {
+				holdings.Accounts[subAccount.ID].Balances[assetType] = make(map[currency.Code]CurrencyBalance)
+			}
+
+			for _, currencyBalance := range subAccount.Currencies {
+				holdings.Accounts[subAccount.ID].Balances[assetType][currencyBalance.CurrencyName] = CurrencyBalance{
+					Currency:   currencyBalance.CurrencyName,
+					TotalValue: currencyBalance.TotalValue,
+					Hold:       currencyBalance.Hold,
 				}
 			}
 		}
 	}
 
-	var empty account.Balance
-
-	return empty, ErrCurrencyNotFound
-}
-
-func (b *BalancesStrategy) tick(k *Keep, e exchange.IBotExchange) {
-	holdings, err := e.UpdateAccountInfo(context.Background(), asset.Spot)
-	if err != nil {
-		Msg(log.Error().Str("exchange", e.GetName()).Err(err))
-	}
-
-	b.Store(holdings)
+	key := strings.ToLower(e.GetName())
+	b.holdings.Store(key, holdings)
 }
 
 // +--------------------+
@@ -105,6 +108,9 @@ func (b *BalancesStrategy) tick(k *Keep, e exchange.IBotExchange) {
 // +--------------------+
 
 func (b *BalancesStrategy) Init(ctx context.Context, k *Keep, e exchange.IBotExchange) error {
+	key := strings.ToLower(e.GetName())
+	b.holdings.Store(key, NewExchangeHoldings())
+
 	return b.ticker.Init(ctx, k, e)
 }
 
@@ -143,19 +149,3 @@ func (b *BalancesStrategy) OnUnrecognized(k *Keep, e exchange.IBotExchange, x in
 func (b *BalancesStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
 	return b.ticker.Deinit(k, e)
 }
-
-// func zeroHoldings(holdings account.Holdings) bool {
-// 	if holdings.Exchange == "" {
-// 		return true
-// 	}
-
-// 	for _, a := range holdings.Accounts {
-// 		for _, c := range a.Currencies {
-// 			if c.TotalValue > 0 {
-// 				return false
-// 			}
-// 		}
-// 	}
-
-// 	return true
-// }

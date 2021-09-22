@@ -6,19 +6,16 @@ import (
 	"errors"
 
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
 )
 
 var ErrNeedBalancesStrategy = errors.New("Keep should be configured with balances support")
 
-func Holdings(k *Keep, exchangeName string) (account.Holdings, error) {
+func Holdings(k *Keep, exchangeName string) (*ExchangeHoldings, error) {
 	st, err := k.Root.Get("balances")
 	if errors.Is(err, ErrStrategyNotFound) {
-		var empty account.Holdings
-
-		return empty, ErrNeedBalancesStrategy
+		return nil, ErrNeedBalancesStrategy
 	}
 
 	balances, ok := st.(*BalancesStrategy)
@@ -26,25 +23,12 @@ func Holdings(k *Keep, exchangeName string) (account.Holdings, error) {
 		panic("cast failed")
 	}
 
-	holdings, _ := balances.Load(exchangeName)
+	holdings, err := balances.ExchangeHoldings(exchangeName)
+	if err != nil {
+		return nil, err
+	}
 
 	return holdings, nil
-}
-
-func CurrencyBalance(k *Keep, exchangeName, currencyCode string, accountID string) (account.Balance, error) {
-	st, err := k.Root.Get("balances")
-	if errors.Is(err, ErrStrategyNotFound) {
-		var empty account.Balance
-
-		return empty, ErrNeedBalancesStrategy
-	}
-
-	balances, ok := st.(*BalancesStrategy)
-	if !ok {
-		panic("casting failed")
-	}
-
-	return balances.Currency(exchangeName, currencyCode, accountID)
 }
 
 func ModifyOrder(ctx context.Context,
