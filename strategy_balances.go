@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -47,11 +48,13 @@ func NewBalancesStrategy(refreshRate time.Duration) Strategy {
 }
 
 func (b *BalancesStrategy) Store(holdings account.Holdings) {
-	b.balances.Store(holdings.Exchange, holdings)
+	key := strings.ToLower(holdings.Exchange)
+	b.balances.Store(key, holdings)
 }
 
 func (b *BalancesStrategy) Load(exchangeName string) (holdings account.Holdings, loaded bool) {
-	pointer, loaded := b.balances.Load(exchangeName)
+	key := strings.ToLower(exchangeName)
+	pointer, loaded := b.balances.Load(key)
 
 	if loaded {
 		var ok bool
