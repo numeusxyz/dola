@@ -31,6 +31,7 @@ type KeepBuilder struct {
 	balancesRefreshRate time.Duration
 	factory             ExchangeFactory
 	settings            engine.Settings
+	reporters           []Reporter
 }
 
 func NewKeepBuilder() *KeepBuilder {
@@ -41,6 +42,7 @@ func NewKeepBuilder() *KeepBuilder {
 		balancesRefreshRate: 0,
 		factory:             ExchangeFactory{},
 		settings:            settings,
+		reporters:           []Reporter{},
 	}
 }
 
@@ -68,6 +70,12 @@ func (b *KeepBuilder) Settings(s engine.Settings) *KeepBuilder {
 	return b
 }
 
+func (b *KeepBuilder) Reporter(r Reporter) *KeepBuilder {
+	b.reporters = append(b.reporters, r)
+
+	return b
+}
+
 func (b *KeepBuilder) Build() (*Keep, error) {
 	// Resolve path to config file.
 	b.settings.ConfigFile = ConfigFile(b.settings.ConfigFile)
@@ -85,6 +93,7 @@ func (b *KeepBuilder) Build() (*Keep, error) {
 			Root:            NewRootStrategy(),
 			Settings:        b.settings,
 			registry:        *NewOrderRegistry(),
+			reporters:       b.reporters,
 		}
 	)
 
@@ -136,6 +145,7 @@ type Keep struct {
 	Root            RootStrategy
 	Settings        engine.Settings
 	registry        OrderRegistry
+	reporters       []Reporter
 }
 
 // Run is the entry point of all exchange data streams.  Strategy.On*() events for a
@@ -213,7 +223,22 @@ func (bot *Keep) getExchange(x interface{}) exchange.IBotExchange {
 func (bot *Keep) GetActiveOrders(ctx context.Context, exchangeOrName interface{}, request order.GetOrdersRequest) (
 	[]order.Detail, error,
 ) {
-	return bot.getExchange(exchangeOrName).GetActiveOrders(ctx, &request)
+	e := bot.getExchange(exchangeOrName)
+
+	bot.ReportEvent(GetActiveOrdersMetric, e.GetName())
+
+	timer := time.Now()
+
+	defer bot.ReportLatency(GetActiveOrdersLatencyMetric, timer, e.GetName())
+
+	resp, err := e.GetActiveOrders(ctx, &request)
+	if err != nil {
+		bot.ReportEvent(GetActiveOrdersErrorMetric, e.GetName())
+
+		return resp, err
+	}
+
+	return resp, nil
 }
 
 // +------------------------+
@@ -239,11 +264,21 @@ func (bot *Keep) SubmitOrderUD(ctx context.Context,
 		submit.Exchange = e.GetName()
 	}
 
+	bot.ReportEvent(SubmitOrderMetric, e.GetName())
+
+	defer bot.ReportLatency(SubmitOrderLatencyMetric, time.Now(), e.GetName())
+
 	resp, err := e.SubmitOrder(ctx, &submit)
-	if err == nil {
-		if !bot.registry.Store(e.GetName(), resp, userData) {
-			return resp, ErrOrdersAlreadyExists
-		}
+	if err != nil {
+		// post an error metric event
+		bot.ReportEvent(SubmitOrderErrorMetric, e.GetName())
+
+		return resp, err
+	}
+
+	// store the order in the registry
+	if !bot.registry.Store(e.GetName(), resp, userData) {
+		return resp, ErrOrdersAlreadyExists
 	}
 
 	return resp, err
@@ -251,6 +286,10 @@ func (bot *Keep) SubmitOrderUD(ctx context.Context,
 
 func (bot *Keep) SubmitOrders(ctx context.Context, e exchange.IBotExchange, xs ...order.Submit) error {
 	var wg ErrorWaitGroup
+
+	bot.ReportEvent(SubmitBulkOrderMetric, e.GetName())
+
+	defer bot.ReportLatency(SubmitBulkOrderLatencyMetric, time.Now(), e.GetName())
 
 	for _, x := range xs {
 		wg.Add(1)
@@ -269,7 +308,19 @@ func (bot *Keep) ModifyOrder(ctx context.Context,
 	mod order.Modify) (order.Modify, error) {
 	e := bot.getExchange(exchangeOrName)
 
-	return e.ModifyOrder(ctx, &mod)
+	bot.ReportEvent(ModifyOrderMetric, e.GetName())
+
+	defer bot.ReportLatency(ModifyOrderLatencyMetric, time.Now(), e.GetName())
+
+	resp, err := e.ModifyOrder(ctx, &mod)
+	if err != nil {
+		// post an error metric event
+		bot.ReportEvent(ModifyOrderErrorMetric, e.GetName())
+
+		return resp, err
+	}
+
+	return resp, nil
 }
 
 // +--------------------------+
@@ -290,7 +341,18 @@ func (bot *Keep) CancelAllOrders(ctx context.Context,
 	cancel.Pair = pair
 	cancel.Symbol = pair.String()
 
-	return e.CancelAllOrders(ctx, &cancel)
+	bot.ReportEvent(CancelAllOrdersMetric, e.GetName(), pair.String())
+
+	defer bot.ReportLatency(CancelAllOrdersLatencyMetric, time.Now(), e.GetName())
+
+	resp, err := e.CancelAllOrders(ctx, &cancel)
+	if err != nil {
+		bot.ReportEvent(CancelAllOrdersErrorMetric, e.GetName())
+
+		return resp, err
+	}
+
+	return resp, nil
 }
 
 func (bot *Keep) CancelOrder(ctx context.Context, exchangeOrName interface{}, x order.Cancel) error {
@@ -300,7 +362,18 @@ func (bot *Keep) CancelOrder(ctx context.Context, exchangeOrName interface{}, x 
 		x.Exchange = e.GetName()
 	}
 
-	return e.CancelOrder(ctx, &x)
+	bot.ReportEvent(CancelOrderMetric, e.GetName())
+
+	defer bot.ReportLatency(CancelOrderLatencyMetric, time.Now(), e.GetName())
+
+	if err := e.CancelOrder(ctx, &x); err != nil {
+		// post an error metric event
+		bot.ReportEvent(CancelOrderErrorMetric, e.GetName())
+
+		return err
+	}
+
+	return nil
 }
 
 func (bot *Keep) CancelOrdersByPrefix(ctx context.Context,
@@ -368,6 +441,28 @@ func (bot *Keep) OnOrder(e exchange.IBotExchange, x order.Detail) {
 		if obs, ok := value.UserData.(OnFilledObserver); ok {
 			obs.OnFilled(bot, e, x)
 		}
+	}
+}
+
+// +----------------------+
+// | Keep: Metric reports |
+// +----------------------+
+
+func (bot *Keep) ReportLatency(m Metric, t time.Time, labels ...string) {
+	for _, r := range bot.reporters {
+		r.Latency(m, time.Since(t), labels...)
+	}
+}
+
+func (bot *Keep) ReportEvent(m Metric, labels ...string) {
+	for _, r := range bot.reporters {
+		r.Event(m, labels...)
+	}
+}
+
+func (bot *Keep) ReportValue(m Metric, v float64, labels ...string) {
+	for _, r := range bot.reporters {
+		r.Value(m, v, labels...)
 	}
 }
 
