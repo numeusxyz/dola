@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
@@ -167,7 +166,6 @@ func (r *HistoryStrategy) OnOrderBook(k *Keep, e exchange.IBotExchange, x orderb
 }
 
 func (r *HistoryStrategy) OnOrder(k *Keep, e exchange.IBotExchange, x order.Detail) error {
-	Code(log.Info().Interface("x", x), "orderche")
 	return fire(r.onOrderUnits, e, x.Date, x)
 }
 
