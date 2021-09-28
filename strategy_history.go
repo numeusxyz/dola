@@ -3,8 +3,10 @@ package dola
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
@@ -111,15 +113,16 @@ func (r *HistoryStrategy) AddHistorian(
 	stateLength int,
 	f func(Array),
 ) error {
+	key := strings.ToLower(exchangeName)
 	historian := NewHistorian(interval, stateLength, f)
 
 	switch eventName {
 	case "OnPrice":
-		xs := r.onPriceUnits[exchangeName]
-		r.onPriceUnits[exchangeName] = append(xs, &historian)
+		xs := r.onPriceUnits[key]
+		r.onPriceUnits[key] = append(xs, &historian)
 	case "OnOrder":
-		xs := r.onOrderUnits[exchangeName]
-		r.onOrderUnits[exchangeName] = append(xs, &historian)
+		xs := r.onOrderUnits[key]
+		r.onOrderUnits[key] = append(xs, &historian)
 	default:
 		return ErrUnknownEvent
 	}
@@ -132,8 +135,10 @@ func (r *HistoryStrategy) AddHistorian(
 // +----------+
 
 func (r *HistoryStrategy) Init(ctx context.Context, k *Keep, e exchange.IBotExchange) error {
-	r.onPriceUnits[e.GetName()] = make([]*Historian, 0)
-	r.onOrderUnits[e.GetName()] = make([]*Historian, 0)
+	key := strings.ToLower(e.GetName())
+
+	r.onPriceUnits[key] = make([]*Historian, 0)
+	r.onOrderUnits[key] = make([]*Historian, 0)
 
 	return nil
 }
@@ -162,6 +167,7 @@ func (r *HistoryStrategy) OnOrderBook(k *Keep, e exchange.IBotExchange, x orderb
 }
 
 func (r *HistoryStrategy) OnOrder(k *Keep, e exchange.IBotExchange, x order.Detail) error {
+	Code(log.Info().Interface("x", x), "orderche")
 	return fire(r.onOrderUnits, e, x.Date, x)
 }
 
@@ -182,13 +188,13 @@ func (r *HistoryStrategy) Deinit(k *Keep, e exchange.IBotExchange) error {
 }
 
 func fire(units map[string][]*Historian, e exchange.IBotExchange, now time.Time, x interface{}) error {
-	name := e.GetName()
+	key := strings.ToLower(e.GetName())
 
 	// MT note: if historians do not get added and removed dynamically, this method is
 	// completely safe to be used in a MT environment, because:
 	//   1. reading (without concurrent writing) a map is MT-safe,
 	//   2. all On*() events for a single exchange are invoked from the same thread.
-	for _, unit := range units[name] {
+	for _, unit := range units[key] {
 		unit.Update(now, x)
 	}
 
