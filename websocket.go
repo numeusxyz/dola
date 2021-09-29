@@ -25,11 +25,6 @@ func Stream(ctx context.Context, k *Keep, e exchange.IBotExchange, s Strategy) e
 		return err
 	}
 
-	// Init strategy for this exchange.
-	if err := s.Init(ctx, k, e); err != nil {
-		return err
-	}
-
 	// This goroutine never, I repeat, *never* finishes.
 	for data := range ws.ToRoutine {
 		err := handleData(k, e, s, data)
@@ -38,11 +33,6 @@ func Stream(ctx context.Context, k *Keep, e exchange.IBotExchange, s Strategy) e
 				Err(err),
 				"error handling data")
 		}
-	}
-
-	// Deinit strategy for this exchange.
-	if err := s.Deinit(k, e); err != nil {
-		return err
 	}
 
 	panic("unexpected end of channel")
