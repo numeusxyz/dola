@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"time"
 
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
@@ -91,12 +92,15 @@ func (u *Historian) Floats() []float64 {
 var ErrUnknownEvent = errors.New("unknown event")
 
 type HistoryStrategy struct {
+	// mutex ensure write serialization of onPriceUnits/onOrderUnits
+	mu           sync.Mutex
 	onPriceUnits map[string][]*Historian
 	onOrderUnits map[string][]*Historian
 }
 
 func NewHistoryStrategy() HistoryStrategy {
 	return HistoryStrategy{
+		mu:           sync.Mutex{},
 		onPriceUnits: make(map[string][]*Historian),
 		onOrderUnits: make(map[string][]*Historian),
 	}
@@ -114,6 +118,9 @@ func (r *HistoryStrategy) AddHistorian(
 ) error {
 	key := strings.ToLower(exchangeName)
 	historian := NewHistorian(interval, stateLength, f)
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	switch eventName {
 	case "OnPrice":
@@ -135,6 +142,9 @@ func (r *HistoryStrategy) AddHistorian(
 
 func (r *HistoryStrategy) Init(ctx context.Context, k *Keep, e exchange.IBotExchange) error {
 	key := strings.ToLower(e.GetName())
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	r.onPriceUnits[key] = make([]*Historian, 0)
 	r.onOrderUnits[key] = make([]*Historian, 0)
