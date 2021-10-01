@@ -165,7 +165,24 @@ func (bot *Keep) Run(ctx context.Context) {
 		go func(x exchange.IBotExchange) {
 			defer wg.Done()
 
-			err := Stream(ctx, bot, x, &bot.Root)
+			// fetch the root strategy
+			s := &bot.Root
+
+			// Init root strategy for this exchange.
+			if err := s.Init(ctx, bot, x); err != nil {
+				panic(err)
+			}
+
+			// go into an infinite loop, either handling websocket
+			// events or just plain blocked when there are none
+			err := Loop(ctx, bot, x, s)
+			// nolint: godox
+			// TODO: handle err on terminate when context gets cancelled
+
+			// Deinit root strategy for this exchange.
+			if err := s.Deinit(bot, x); err != nil {
+				panic(err)
+			}
 
 			// This function is never expected to return.  I'm panic()king
 			// just to maintain the invariant.
@@ -174,6 +191,23 @@ func (bot *Keep) Run(ctx context.Context) {
 	}
 
 	wg.Wait()
+}
+
+func Loop(ctx context.Context, k *Keep, e exchange.IBotExchange, s Strategy) error {
+	// If this exchange doesn't support websockets we still need to
+	// keep running
+	if !e.IsWebsocketEnabled() {
+		gctlog := GCTLog{nil}
+		gctlog.Warnf(gctlog.ExchangeSys, "%s: no websocket support", e.GetName())
+
+		<-ctx.Done()
+
+		return nil
+	}
+
+	// this exchanges does support websockets, go into an
+	// infinite loop of receiving/handling messages
+	return Stream(ctx, k, e, s)
 }
 
 func (bot *Keep) AddHistorian(
