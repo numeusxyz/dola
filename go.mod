@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/google/go-cmp v0.5.6
 	github.com/rs/zerolog v1.24.0
-	github.com/thrasher-corp/gocryptotrader v0.0.0-20210921040122-1d7c656665a7
+	github.com/thrasher-corp/gocryptotrader v0.0.0-20211001042402-01dea7e219dd
 	go.uber.org/multierr v1.7.0
 )
 
@@ -39,6 +39,6 @@ require (
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20210903162649-d08c68adba83 // indirect
-	google.golang.org/grpc v1.40.0 // indirect
+	google.golang.org/grpc v1.41.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 )
