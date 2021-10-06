@@ -18,6 +18,10 @@ import (
 	"go.uber.org/multierr"
 )
 
+const (
+	defaultWebsocketTrafficTimeout = time.Second * 30
+)
+
 // +-------------+
 // | KeepBuilder |
 // +-------------+
@@ -508,6 +512,10 @@ type GCTLog struct {
 	ExchangeSys interface{}
 }
 
+func (g GCTLog) Infof(_ interface{}, data string, v ...interface{}) {
+	What(log.Info(), fmt.Sprintf(data, v...))
+}
+
 func (g GCTLog) Warnf(_ interface{}, data string, v ...interface{}) {
 	What(log.Warn(), fmt.Sprintf(data, v...))
 }
@@ -556,16 +564,14 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 	if err != nil {
 		return err
 	}
-	if exch.GetBase() == nil {
+
+	base := exch.GetBase()
+	if base == nil {
 		return ErrExchangeFailedToLoad
 	}
 
-	var localWG sync.WaitGroup
-	localWG.Add(1)
-	go func() {
-		exch.SetDefaults()
-		localWG.Done()
-	}()
+	exch.SetDefaults()
+
 	exchCfg, err := bot.Config.GetExchangeConfig(name)
 	if err != nil {
 		return err
@@ -589,15 +595,23 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 	}
 	if exchCfg.Features != nil {
 		if bot.Settings.EnableExchangeWebsocketSupport &&
-			exchCfg.Features.Supports.Websocket {
+			base.Features.Supports.Websocket {
 			exchCfg.Features.Enabled.Websocket = true
+
+			if exchCfg.WebsocketTrafficTimeout <= 0 {
+				gctlog.Infof(gctlog.ExchangeSys,
+					"Exchange %s Websocket response traffic timeout value not set, defaulting to %v.",
+					exchCfg.Name,
+					defaultWebsocketTrafficTimeout)
+				exchCfg.WebsocketTrafficTimeout = defaultWebsocketTrafficTimeout
+			}
 		}
 		if bot.Settings.EnableExchangeAutoPairUpdates &&
-			exchCfg.Features.Supports.RESTCapabilities.AutoPairUpdates {
+			base.Features.Supports.RESTCapabilities.AutoPairUpdates {
 			exchCfg.Features.Enabled.AutoPairUpdates = true
 		}
 		if bot.Settings.DisableExchangeAutoPairUpdates {
-			if exchCfg.Features.Supports.RESTCapabilities.AutoPairUpdates {
+			if base.Features.Supports.RESTCapabilities.AutoPairUpdates {
 				exchCfg.Features.Enabled.AutoPairUpdates = false
 			}
 		}
@@ -615,7 +629,6 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 		exchCfg.HTTPDebugging = bot.Settings.EnableExchangeHTTPDebugging
 	}
 
-	localWG.Wait()
 	if !bot.Settings.EnableExchangeHTTPRateLimiter {
 		gctlog.Warnf(gctlog.ExchangeSys,
 			"Loaded exchange %s rate limiting has been turned off.\n",
@@ -639,7 +652,6 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 	}
 
 	bot.ExchangeManager.Add(exch)
-	base := exch.GetBase()
 	if base.API.AuthenticatedSupport ||
 		base.API.AuthenticatedWebsocketSupport {
 		assetTypes := base.GetAssetTypes(false)
