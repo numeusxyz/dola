@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/google/go-cmp v0.5.6
 	github.com/rs/zerolog v1.24.0
-	github.com/thrasher-corp/gocryptotrader v0.0.0-20211001042402-01dea7e219dd
+	github.com/thrasher-corp/gocryptotrader v0.0.0-20211007034306-5208d2191e2d
 	go.uber.org/multierr v1.7.0
 )
 
