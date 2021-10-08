@@ -10,6 +10,7 @@ import (
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/trade"
 )
 
 type VerboseStrategy struct {
@@ -85,6 +86,12 @@ func (v VerboseStrategy) OnModify(k *Keep, e exchange.IBotExchange, x order.Modi
 }
 
 func (v VerboseStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error {
+	Msg(log.Info().Str("e", e.GetName()).Interface("x", x))
+
+	return nil
+}
+
+func (v VerboseStrategy) OnTrade(k *Keep, e exchange.IBotExchange, x []trade.Data) error {
 	Msg(log.Info().Str("e", e.GetName()).Interface("x", x))
 
 	return nil

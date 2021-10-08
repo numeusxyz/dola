@@ -11,6 +11,7 @@ import (
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/trade"
 )
 
 type TickerStrategy struct {
@@ -70,6 +71,10 @@ func (s *TickerStrategy) OnModify(k *Keep, e exchange.IBotExchange, x order.Modi
 }
 
 func (s *TickerStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error {
+	return nil
+}
+
+func (s *TickerStrategy) OnTrade(k *Keep, e exchange.IBotExchange, x []trade.Data) error {
 	return nil
 }
 
