@@ -7,6 +7,7 @@ import (
 
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/fill"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
@@ -75,6 +76,10 @@ func (s *TickerStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x acc
 }
 
 func (s *TickerStrategy) OnTrade(k *Keep, e exchange.IBotExchange, x []trade.Data) error {
+	return nil
+}
+
+func (s *TickerStrategy) OnFill(k *Keep, e exchange.IBotExchange, x []fill.Data) error {
 	return nil
 }
 

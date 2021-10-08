@@ -7,6 +7,7 @@ import (
 
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/fill"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
@@ -111,6 +112,10 @@ func (m *RootStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x accou
 
 func (m *RootStrategy) OnTrade(k *Keep, e exchange.IBotExchange, x []trade.Data) error {
 	return m.each(func(s Strategy) error { return s.OnTrade(k, e, x) })
+}
+
+func (m *RootStrategy) OnFill(k *Keep, e exchange.IBotExchange, x []fill.Data) error {
+	return m.each(func(s Strategy) error { return s.OnFill(k, e, x) })
 }
 
 func (m *RootStrategy) OnUnrecognized(k *Keep, e exchange.IBotExchange, x interface{}) error {

@@ -6,6 +6,7 @@ import (
 	"github.com/rs/zerolog/log"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/fill"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
@@ -92,6 +93,12 @@ func (v VerboseStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x acc
 }
 
 func (v VerboseStrategy) OnTrade(k *Keep, e exchange.IBotExchange, x []trade.Data) error {
+	Msg(log.Info().Str("e", e.GetName()).Interface("x", x))
+
+	return nil
+}
+
+func (v VerboseStrategy) OnFill(k *Keep, e exchange.IBotExchange, x []fill.Data) error {
 	Msg(log.Info().Str("e", e.GetName()).Interface("x", x))
 
 	return nil
