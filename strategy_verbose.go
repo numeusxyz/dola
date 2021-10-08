@@ -51,19 +51,29 @@ func (v VerboseStrategy) OnKline(k *Keep, e exchange.IBotExchange, x stream.Klin
 
 func (v VerboseStrategy) OnOrderBook(k *Keep, e exchange.IBotExchange, x orderbook.Base) error {
 	if !v.SilenceOrderBook {
-		ask := 0.0
+		askPrice := 0.0
+		askAmount := 0.0
+
 		if len(x.Asks) > 0 {
-			ask = x.Asks[0].Price
+			askPrice = x.Asks[0].Price
+			askAmount = x.Asks[0].Amount
 		}
 
-		bid := 0.0
+		bidPrice := 0.0
+		bidAmount := 0.0
+
 		if len(x.Bids) > 0 {
-			bid = x.Bids[0].Price
+			bidPrice = x.Bids[0].Price
+			bidAmount = x.Bids[0].Amount
 		}
 
 		Msg(log.Info().
-			Float64("ask", ask).
-			Float64("bid", bid).
+			Str("asset", string(x.Asset)).
+			Str("pair", x.Pair.String()).
+			Float64("ask_price", askPrice).
+			Float64("bid_price", bidPrice).
+			Float64("ask_size", askAmount).
+			Float64("bid_size", bidAmount).
 			Int("len(asks)", len(x.Asks)).
 			Int("len(bids)", len(x.Bids)).
 			Str("e", e.GetName()))
