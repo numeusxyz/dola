@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/google/go-cmp v0.5.6
 	github.com/rs/zerolog v1.24.0
-	github.com/thrasher-corp/gocryptotrader v0.0.0-20211007034306-5208d2191e2d
+	github.com/thrasher-corp/gocryptotrader v0.0.0-20211020044506-099ffa1a603b
 	go.uber.org/multierr v1.7.0
 )
 
@@ -13,7 +13,7 @@ require (
 	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/d5/tengo/v2 v2.8.0 // indirect
 	github.com/friendsofgo/errors v0.9.2 // indirect
-	github.com/gofrs/uuid v4.0.0+incompatible // indirect
+	github.com/gofrs/uuid v4.1.0+incompatible // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
@@ -21,10 +21,10 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0 // indirect
 	github.com/lib/pq v1.10.3 // indirect
-	github.com/mattn/go-sqlite3 v1.14.8 // indirect
+	github.com/mattn/go-sqlite3 v1.14.9 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pquerna/otp v1.3.0 // indirect
-	github.com/shopspring/decimal v1.2.0 // indirect
+	github.com/shopspring/decimal v1.3.0 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/thrasher-corp/gct-ta v0.0.0-20200623072738-f2b55b7f9f41 // indirect
 	github.com/thrasher-corp/sqlboiler v1.0.1-0.20191001234224-71e17f37a85e // indirect
