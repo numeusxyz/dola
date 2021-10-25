@@ -44,7 +44,7 @@ func NewKeepBuilder() *KeepBuilder {
 	return &KeepBuilder{
 		augment:             nil,
 		balancesRefreshRate: 0,
-		factory:             ExchangeFactory{},
+		factory:             nil,
 		settings:            settings,
 		reporters:           []Reporter{},
 	}
@@ -62,8 +62,8 @@ func (b *KeepBuilder) Balances(refreshRate time.Duration) *KeepBuilder {
 	return b
 }
 
-func (b *KeepBuilder) CustomExchange(name string, fn ExchangeCreatorFunc) *KeepBuilder {
-	b.factory.Register(name, fn)
+func (b *KeepBuilder) CustomExchange(f ExchangeFactory) *KeepBuilder {
+	b.factory = f
 
 	return b
 }
@@ -174,7 +174,7 @@ func (bot *Keep) Run(ctx context.Context) {
 
 			// Init root strategy for this exchange.
 			if err := s.Init(ctx, bot, x); err != nil {
-				panic(err)
+				panic(fmt.Errorf("failed to initialize strategy: %w", err))
 			}
 
 			// go into an infinite loop, either handling websocket
@@ -528,8 +528,8 @@ func (g GCTLog) Debugf(_ interface{}, data string, v ...interface{}) {
 	What(log.Debug(), fmt.Sprintf(data, v...))
 }
 
-func (bot *Keep) LoadExchange(name string, wg *sync.WaitGroup) error {
-	return bot.loadExchange(name, wg, GCTLog{nil})
+func (bot *Keep) LoadExchange(cfg *config.Exchange, wg *sync.WaitGroup) error {
+	return bot.loadExchange(cfg, wg, GCTLog{nil})
 }
 
 // +----------------------------+
@@ -559,8 +559,8 @@ func (bot *Keep) GetExchanges() []exchange.IBotExchange {
 // loadExchange is an unchanged copy of Engine.LoadExchange.
 //
 //nolint
-func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) error {
-	exch, err := bot.ExchangeManager.NewExchangeByName(name)
+func (bot *Keep) loadExchange(exchCfg *config.Exchange, wg *sync.WaitGroup, gctlog GCTLog) error {
+	exch, err := bot.ExchangeManager.NewExchangeByName(exchCfg.Name)
 	if err != nil {
 		return err
 	}
@@ -571,11 +571,9 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 	}
 
 	exch.SetDefaults()
-
-	exchCfg, err := bot.Config.GetExchangeConfig(name)
-	if err != nil {
-		return err
-	}
+	// overwrite whatever name the exchange wrapper has decided with the name that's in the config,
+	// this is due to the exchange alias functionality that we offer over GCT.
+	base.Name = exchCfg.Name
 
 	if bot.Settings.EnableAllPairs &&
 		exchCfg.CurrencyPairs != nil {
@@ -733,7 +731,7 @@ func (bot *Keep) setupExchanges(gctlog GCTLog) error {
 		wg.Add(1)
 		go func(c config.Exchange) {
 			defer wg.Done()
-			err := bot.LoadExchange(c.Name, &wg)
+			err := bot.LoadExchange(&c, &wg)
 			if err != nil {
 				gctlog.Errorf(gctlog.ExchangeSys, "LoadExchange %s failed: %s\n", c.Name, err)
 				return
