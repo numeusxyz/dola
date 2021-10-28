@@ -532,6 +532,53 @@ func (bot *Keep) LoadExchange(cfg *config.Exchange, wg *sync.WaitGroup) error {
 	return bot.loadExchange(cfg, wg, GCTLog{nil})
 }
 
+// +-------------------------------+
+// | Keep: GCT wrapped function    |
+// +-------------------------------+
+
+// ActivatePair activates and makes available the provided currency
+// pair.
+func (bot *Keep) ActivateAsset(e exchange.IBotExchange, a asset.Item) error {
+	base := e.GetBase()
+
+	// asset type was not previously enabled, take care of that here
+	if err := base.CurrencyPairs.SetAssetEnabled(a, true); err != nil && !errors.Is(err, currency.ErrAssetAlreadyEnabled) {
+		return err
+	}
+
+	return nil
+}
+
+// ActivatePair activates and makes available the provided asset type, currency
+// pair.
+func (bot *Keep) ActivatePair(e exchange.IBotExchange, a asset.Item, p currency.Pair) error {
+	base := e.GetBase()
+
+	if err := base.CurrencyPairs.IsAssetEnabled(a); err != nil {
+		return err
+	}
+
+	// updated enabled pairs
+	enabledpairs, err := base.CurrencyPairs.GetPairs(a, true)
+	if err != nil {
+		return err
+	}
+
+	enabledpairs = append(enabledpairs, p)
+	base.CurrencyPairs.StorePairs(a, enabledpairs, true)
+
+	// updated available pairs
+	availablepairs, err := base.CurrencyPairs.GetPairs(a, false)
+	if err != nil {
+		return err
+	}
+
+	availablepairs = append(availablepairs, p)
+	base.CurrencyPairs.StorePairs(a, availablepairs, false)
+
+	return nil
+}
+
 // +----------------------------+
 // | Copied from gocryptotrader |
 // +----------------------------+
