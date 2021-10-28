@@ -12,10 +12,12 @@ import (
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/fill"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/trade"
 )
 
 // +------------------+
@@ -139,6 +141,14 @@ func (b *BalancesStrategy) OnModify(k *Keep, e exchange.IBotExchange, x order.Mo
 }
 
 func (b *BalancesStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error {
+	return nil
+}
+
+func (b *BalancesStrategy) OnTrade(k *Keep, e exchange.IBotExchange, x []trade.Data) error {
+	return nil
+}
+
+func (b *BalancesStrategy) OnFill(k *Keep, e exchange.IBotExchange, x []fill.Data) error {
 	return nil
 }
 

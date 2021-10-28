@@ -7,10 +7,12 @@ import (
 
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/fill"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/trade"
 	"go.uber.org/multierr"
 )
 
@@ -106,6 +108,14 @@ func (m *RootStrategy) OnModify(k *Keep, e exchange.IBotExchange, x order.Modify
 
 func (m *RootStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error {
 	return m.each(func(s Strategy) error { return s.OnBalanceChange(k, e, x) })
+}
+
+func (m *RootStrategy) OnTrade(k *Keep, e exchange.IBotExchange, x []trade.Data) error {
+	return m.each(func(s Strategy) error { return s.OnTrade(k, e, x) })
+}
+
+func (m *RootStrategy) OnFill(k *Keep, e exchange.IBotExchange, x []fill.Data) error {
+	return m.each(func(s Strategy) error { return s.OnFill(k, e, x) })
 }
 
 func (m *RootStrategy) OnUnrecognized(k *Keep, e exchange.IBotExchange, x interface{}) error {

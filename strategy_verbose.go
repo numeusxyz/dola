@@ -6,10 +6,12 @@ import (
 	"github.com/rs/zerolog/log"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/fill"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/trade"
 )
 
 type VerboseStrategy struct {
@@ -49,19 +51,29 @@ func (v VerboseStrategy) OnKline(k *Keep, e exchange.IBotExchange, x stream.Klin
 
 func (v VerboseStrategy) OnOrderBook(k *Keep, e exchange.IBotExchange, x orderbook.Base) error {
 	if !v.SilenceOrderBook {
-		ask := 0.0
+		askPrice := 0.0
+		askAmount := 0.0
+
 		if len(x.Asks) > 0 {
-			ask = x.Asks[0].Price
+			askPrice = x.Asks[0].Price
+			askAmount = x.Asks[0].Amount
 		}
 
-		bid := 0.0
+		bidPrice := 0.0
+		bidAmount := 0.0
+
 		if len(x.Bids) > 0 {
-			bid = x.Bids[0].Price
+			bidPrice = x.Bids[0].Price
+			bidAmount = x.Bids[0].Amount
 		}
 
 		Msg(log.Info().
-			Float64("ask", ask).
-			Float64("bid", bid).
+			Str("asset", string(x.Asset)).
+			Str("pair", x.Pair.String()).
+			Float64("ask_price", askPrice).
+			Float64("bid_price", bidPrice).
+			Float64("ask_size", askAmount).
+			Float64("bid_size", bidAmount).
 			Int("len(asks)", len(x.Asks)).
 			Int("len(bids)", len(x.Bids)).
 			Str("e", e.GetName()))
@@ -85,6 +97,18 @@ func (v VerboseStrategy) OnModify(k *Keep, e exchange.IBotExchange, x order.Modi
 }
 
 func (v VerboseStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error {
+	Msg(log.Info().Str("e", e.GetName()).Interface("x", x))
+
+	return nil
+}
+
+func (v VerboseStrategy) OnTrade(k *Keep, e exchange.IBotExchange, x []trade.Data) error {
+	Msg(log.Info().Str("e", e.GetName()).Interface("x", x))
+
+	return nil
+}
+
+func (v VerboseStrategy) OnFill(k *Keep, e exchange.IBotExchange, x []fill.Data) error {
 	Msg(log.Info().Str("e", e.GetName()).Interface("x", x))
 
 	return nil

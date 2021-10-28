@@ -5,10 +5,12 @@ import (
 
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/fill"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/trade"
 )
 
 // DedicatedStrategy is a Strategy wrapper that executes wrapped
@@ -77,6 +79,22 @@ func (d *DedicatedStrategy) OnModify(k *Keep, e exchange.IBotExchange, x order.M
 func (d *DedicatedStrategy) OnBalanceChange(k *Keep, e exchange.IBotExchange, x account.Change) error {
 	if e.GetName() == d.Exchange {
 		return d.Wrapped.OnBalanceChange(k, e, x)
+	}
+
+	return nil
+}
+
+func (d *DedicatedStrategy) OnTrade(k *Keep, e exchange.IBotExchange, x []trade.Data) error {
+	if e.GetName() == d.Exchange {
+		return d.Wrapped.OnTrade(k, e, x)
+	}
+
+	return nil
+}
+
+func (d *DedicatedStrategy) OnFill(k *Keep, e exchange.IBotExchange, x []fill.Data) error {
+	if e.GetName() == d.Exchange {
+		return d.Wrapped.OnFill(k, e, x)
 	}
 
 	return nil
