@@ -18,6 +18,10 @@ import (
 	"go.uber.org/multierr"
 )
 
+const (
+	defaultWebsocketTrafficTimeout = time.Second * 30
+)
+
 // +-------------+
 // | KeepBuilder |
 // +-------------+
@@ -40,7 +44,7 @@ func NewKeepBuilder() *KeepBuilder {
 	return &KeepBuilder{
 		augment:             nil,
 		balancesRefreshRate: 0,
-		factory:             ExchangeFactory{},
+		factory:             nil,
 		settings:            settings,
 		reporters:           []Reporter{},
 	}
@@ -58,8 +62,8 @@ func (b *KeepBuilder) Balances(refreshRate time.Duration) *KeepBuilder {
 	return b
 }
 
-func (b *KeepBuilder) CustomExchange(name string, fn ExchangeCreatorFunc) *KeepBuilder {
-	b.factory.Register(name, fn)
+func (b *KeepBuilder) CustomExchange(f ExchangeFactory) *KeepBuilder {
+	b.factory = f
 
 	return b
 }
@@ -170,7 +174,7 @@ func (bot *Keep) Run(ctx context.Context) {
 
 			// Init root strategy for this exchange.
 			if err := s.Init(ctx, bot, x); err != nil {
-				panic(err)
+				panic(fmt.Errorf("failed to initialize strategy: %w", err))
 			}
 
 			// go into an infinite loop, either handling websocket
@@ -508,6 +512,10 @@ type GCTLog struct {
 	ExchangeSys interface{}
 }
 
+func (g GCTLog) Infof(_ interface{}, data string, v ...interface{}) {
+	What(log.Info(), fmt.Sprintf(data, v...))
+}
+
 func (g GCTLog) Warnf(_ interface{}, data string, v ...interface{}) {
 	What(log.Warn(), fmt.Sprintf(data, v...))
 }
@@ -520,8 +528,55 @@ func (g GCTLog) Debugf(_ interface{}, data string, v ...interface{}) {
 	What(log.Debug(), fmt.Sprintf(data, v...))
 }
 
-func (bot *Keep) LoadExchange(name string, wg *sync.WaitGroup) error {
-	return bot.loadExchange(name, wg, GCTLog{nil})
+func (bot *Keep) LoadExchange(cfg *config.Exchange, wg *sync.WaitGroup) error {
+	return bot.loadExchange(cfg, wg, GCTLog{nil})
+}
+
+// +-------------------------------+
+// | Keep: GCT wrapped function    |
+// +-------------------------------+
+
+// ActivatePair activates and makes available the provided currency
+// pair.
+func (bot *Keep) ActivateAsset(e exchange.IBotExchange, a asset.Item) error {
+	base := e.GetBase()
+
+	// asset type was not previously enabled, take care of that here
+	if err := base.CurrencyPairs.SetAssetEnabled(a, true); err != nil && !errors.Is(err, currency.ErrAssetAlreadyEnabled) {
+		return err
+	}
+
+	return nil
+}
+
+// ActivatePair activates and makes available the provided asset type, currency
+// pair.
+func (bot *Keep) ActivatePair(e exchange.IBotExchange, a asset.Item, p currency.Pair) error {
+	base := e.GetBase()
+
+	if err := base.CurrencyPairs.IsAssetEnabled(a); err != nil {
+		return err
+	}
+
+	// updated enabled pairs
+	enabledpairs, err := base.CurrencyPairs.GetPairs(a, true)
+	if err != nil {
+		return err
+	}
+
+	enabledpairs = append(enabledpairs, p)
+	base.CurrencyPairs.StorePairs(a, enabledpairs, true)
+
+	// updated available pairs
+	availablepairs, err := base.CurrencyPairs.GetPairs(a, false)
+	if err != nil {
+		return err
+	}
+
+	availablepairs = append(availablepairs, p)
+	base.CurrencyPairs.StorePairs(a, availablepairs, false)
+
+	return nil
 }
 
 // +----------------------------+
@@ -551,25 +606,21 @@ func (bot *Keep) GetExchanges() []exchange.IBotExchange {
 // loadExchange is an unchanged copy of Engine.LoadExchange.
 //
 //nolint
-func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) error {
-	exch, err := bot.ExchangeManager.NewExchangeByName(name)
+func (bot *Keep) loadExchange(exchCfg *config.Exchange, wg *sync.WaitGroup, gctlog GCTLog) error {
+	exch, err := bot.ExchangeManager.NewExchangeByName(exchCfg.Name)
 	if err != nil {
 		return err
 	}
-	if exch.GetBase() == nil {
+
+	base := exch.GetBase()
+	if base == nil {
 		return ErrExchangeFailedToLoad
 	}
 
-	var localWG sync.WaitGroup
-	localWG.Add(1)
-	go func() {
-		exch.SetDefaults()
-		localWG.Done()
-	}()
-	exchCfg, err := bot.Config.GetExchangeConfig(name)
-	if err != nil {
-		return err
-	}
+	exch.SetDefaults()
+	// overwrite whatever name the exchange wrapper has decided with the name that's in the config,
+	// this is due to the exchange alias functionality that we offer over GCT.
+	base.Name = exchCfg.Name
 
 	if bot.Settings.EnableAllPairs &&
 		exchCfg.CurrencyPairs != nil {
@@ -589,15 +640,23 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 	}
 	if exchCfg.Features != nil {
 		if bot.Settings.EnableExchangeWebsocketSupport &&
-			exchCfg.Features.Supports.Websocket {
+			base.Features.Supports.Websocket {
 			exchCfg.Features.Enabled.Websocket = true
+
+			if exchCfg.WebsocketTrafficTimeout <= 0 {
+				gctlog.Infof(gctlog.ExchangeSys,
+					"Exchange %s Websocket response traffic timeout value not set, defaulting to %v.",
+					exchCfg.Name,
+					defaultWebsocketTrafficTimeout)
+				exchCfg.WebsocketTrafficTimeout = defaultWebsocketTrafficTimeout
+			}
 		}
 		if bot.Settings.EnableExchangeAutoPairUpdates &&
-			exchCfg.Features.Supports.RESTCapabilities.AutoPairUpdates {
+			base.Features.Supports.RESTCapabilities.AutoPairUpdates {
 			exchCfg.Features.Enabled.AutoPairUpdates = true
 		}
 		if bot.Settings.DisableExchangeAutoPairUpdates {
-			if exchCfg.Features.Supports.RESTCapabilities.AutoPairUpdates {
+			if base.Features.Supports.RESTCapabilities.AutoPairUpdates {
 				exchCfg.Features.Enabled.AutoPairUpdates = false
 			}
 		}
@@ -615,7 +674,6 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 		exchCfg.HTTPDebugging = bot.Settings.EnableExchangeHTTPDebugging
 	}
 
-	localWG.Wait()
 	if !bot.Settings.EnableExchangeHTTPRateLimiter {
 		gctlog.Warnf(gctlog.ExchangeSys,
 			"Loaded exchange %s rate limiting has been turned off.\n",
@@ -639,7 +697,6 @@ func (bot *Keep) loadExchange(name string, wg *sync.WaitGroup, gctlog GCTLog) er
 	}
 
 	bot.ExchangeManager.Add(exch)
-	base := exch.GetBase()
 	if base.API.AuthenticatedSupport ||
 		base.API.AuthenticatedWebsocketSupport {
 		assetTypes := base.GetAssetTypes(false)
@@ -721,7 +778,7 @@ func (bot *Keep) setupExchanges(gctlog GCTLog) error {
 		wg.Add(1)
 		go func(c config.Exchange) {
 			defer wg.Done()
-			err := bot.LoadExchange(c.Name, &wg)
+			err := bot.LoadExchange(&c, &wg)
 			if err != nil {
 				gctlog.Errorf(gctlog.ExchangeSys, "LoadExchange %s failed: %s\n", c.Name, err)
 				return
