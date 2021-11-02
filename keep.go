@@ -797,3 +797,8 @@ func (bot *Keep) setupExchanges(gctlog GCTLog) error {
 	}
 	return nil
 }
+
+// GetExchangeByName returns an exchange interface given it's name.
+func (bot *Keep) GetExchangeByName(name string) (exchange.IBotExchange, error) {
+	return bot.ExchangeManager.GetExchangeByName(name)
+}
