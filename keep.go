@@ -18,6 +18,8 @@ import (
 	"go.uber.org/multierr"
 )
 
+var ErrNoAssetType = errors.New("asset type not associated with currency pair")
+
 const (
 	defaultWebsocketTrafficTimeout = time.Second * 30
 )
@@ -797,4 +799,24 @@ func (bot *Keep) setupExchanges(gctlog GCTLog) error {
 // GetExchangeByName returns an exchange interface given it's name.
 func (bot *Keep) GetExchangeByName(name string) (exchange.IBotExchange, error) {
 	return bot.ExchangeManager.GetExchangeByName(name)
+}
+
+// GetEnabledPairAssetType returns the asset type that matches with the enabled provided currency pair,
+// returns the first matching asset.
+func (bot *Keep) GetEnabledPairAssetType(e exchange.IBotExchange, c currency.Pair) (asset.Item, error) {
+	b := e.GetBase()
+
+	assetTypes := b.GetAssetTypes(true)
+	for i := range assetTypes {
+		enabled, err := b.GetEnabledPairs(assetTypes[i])
+		if err != nil {
+			return asset.Spot, err
+		}
+
+		if enabled.Contains(c, true) {
+			return assetTypes[i], nil
+		}
+	}
+
+	return asset.Spot, ErrNoAssetType
 }
