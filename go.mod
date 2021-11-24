@@ -5,13 +5,13 @@ go 1.17
 require (
 	github.com/google/go-cmp v0.5.6
 	github.com/rs/zerolog v1.26.0
-	github.com/thrasher-corp/gocryptotrader v0.0.0-20211027232515-4531fdcb4a6a
+	github.com/thrasher-corp/gocryptotrader v0.0.0-20211125225826-0e6b653b4f19
 	go.uber.org/multierr v1.7.0
 )
 
 require (
 	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
-	github.com/d5/tengo/v2 v2.8.0 // indirect
+	github.com/d5/tengo/v2 v2.10.0 // indirect
 	github.com/friendsofgo/errors v0.9.2 // indirect
 	github.com/gofrs/uuid v4.1.0+incompatible // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -19,8 +19,8 @@ require (
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0 // indirect
-	github.com/lib/pq v1.10.3 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
+	github.com/lib/pq v1.10.4 // indirect
 	github.com/mattn/go-sqlite3 v1.14.9 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pquerna/otp v1.3.0 // indirect
@@ -38,7 +38,7 @@ require (
 	golang.org/x/text v0.3.6 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	google.golang.org/genproto v0.0.0-20210903162649-d08c68adba83 // indirect
-	google.golang.org/grpc v1.41.0 // indirect
+	google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1 // indirect
+	google.golang.org/grpc v1.42.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 )
