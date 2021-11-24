@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/thrasher-corp/gocryptotrader/common"
 	"github.com/thrasher-corp/gocryptotrader/config"
 	"github.com/thrasher-corp/gocryptotrader/currency"
 	"github.com/thrasher-corp/gocryptotrader/engine"
@@ -22,7 +21,8 @@ import (
 var ErrNoAssetType = errors.New("asset type not associated with currency pair")
 
 const (
-	defaultWebsocketTrafficTimeout = time.Second * 30
+	constDefaultWebsocketTrafficTimeout    = time.Second * 30
+	constDefaultValidateCredentialsTimeout = time.Second * 5
 )
 
 // +-------------+
@@ -84,7 +84,7 @@ func (b *KeepBuilder) Reporter(r Reporter) *KeepBuilder {
 }
 
 // nolint: funlen
-func (b *KeepBuilder) Build() (*Keep, error) {
+func (b *KeepBuilder) Build(ctx context.Context) (*Keep, error) {
 	// Resolve path to config file.
 	b.settings.ConfigFile = ConfigFile(b.settings.ConfigFile)
 
@@ -141,7 +141,7 @@ func (b *KeepBuilder) Build() (*Keep, error) {
 	}
 
 	// Once everything is set, create and setup exchanges.
-	if err := keep.setupExchanges(); err != nil {
+	if err := keep.setupExchanges(ctx); err != nil {
 		return keep, err
 	}
 
@@ -587,7 +587,7 @@ var (
 
 // loadExchange is an adapted version of GCT's Engine.LoadExchange.
 // nolint: funlen, gocognit, gocyclo, cyclop
-func (bot *Keep) loadExchange(exchCfg *config.Exchange, wg *sync.WaitGroup) error {
+func (bot *Keep) loadExchange(ctx context.Context, exchCfg *config.Exchange, wg *sync.WaitGroup) error {
 	exch, err := bot.ExchangeManager.NewExchangeByName(exchCfg.Name)
 	if err != nil {
 		return err
@@ -631,10 +631,10 @@ func (bot *Keep) loadExchange(exchCfg *config.Exchange, wg *sync.WaitGroup) erro
 			if exchCfg.WebsocketTrafficTimeout <= 0 {
 				What(log.Info().
 					Str("exchange", exchCfg.Name).
-					Dur("default", defaultWebsocketTrafficTimeout),
+					Dur("default", constDefaultWebsocketTrafficTimeout),
 					"Websocket response traffic timeout value not set, setting default")
 
-				exchCfg.WebsocketTrafficTimeout = defaultWebsocketTrafficTimeout
+				exchCfg.WebsocketTrafficTimeout = constDefaultWebsocketTrafficTimeout
 			}
 		}
 
@@ -706,11 +706,19 @@ func (bot *Keep) loadExchange(exchCfg *config.Exchange, wg *sync.WaitGroup) erro
 			break
 		}
 
-		if err := exch.ValidateCredentials(context.TODO(), useAsset); err != nil {
-			gctlog.Warnf(gctlog.ExchangeSys,
-				"%s: Cannot validate credentials: %s\n",
-				base.Name,
-				err)
+		// enforce a max timeout of 5 seconds for validating credentials,
+		// it might be the case that an exchange is rate limiting us, so
+		// we don't want to be waiting forever for this validation to complete
+		ctx, cancel := context.WithTimeout(ctx, constDefaultValidateCredentialsTimeout)
+		defer cancel()
+
+		if err := exch.ValidateCredentials(ctx, useAsset); err != nil {
+			What(log.Warn().
+				Err(err).
+				Str("exchange", exch.GetName()),
+				"unable to validate exchange credentials")
+
+			return err
 		}
 	}
 
@@ -734,7 +742,7 @@ func (bot *Keep) loadExchange(exchCfg *config.Exchange, wg *sync.WaitGroup) erro
 // setupExchanges is an (almost) unchanged copy of Engine.SetupExchanges.
 //
 //nolint
-func (bot *Keep) setupExchanges() error {
+func (bot *Keep) setupExchanges(ctx context.Context) error {
 	var wg sync.WaitGroup
 
 	configs := bot.Config.GetAllExchangeConfigs()
@@ -744,12 +752,13 @@ func (bot *Keep) setupExchanges() error {
 			What(log.Debug().
 				Str("exchange", configs[x].Name),
 				"exchange disabled")
+
 			continue
 		}
 		wg.Add(1)
 		go func(c config.Exchange) {
 			defer wg.Done()
-			err := bot.loadExchange(&c, &wg)
+			err := bot.loadExchange(ctx, &c, &wg)
 			if err != nil {
 				What(log.Error().
 					Err(err).
