@@ -28,6 +28,9 @@ const (
 	GetActiveOrdersMetric
 	GetActiveOrdersLatencyMetric
 	GetActiveOrdersErrorMetric
+	// GCT HTTP metrics
+	GCTHTTPLatencyMetric
+	GCTHTTPRequestMetric
 	// this should always be the last one.
 	MaxMetrics
 )

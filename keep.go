@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"sync"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
+	exchgrequest "github.com/thrasher-corp/gocryptotrader/exchanges/request"
 	gctlog "github.com/thrasher-corp/gocryptotrader/log"
 	"go.uber.org/multierr"
 )
@@ -140,12 +142,34 @@ func (b *KeepBuilder) Build(ctx context.Context) (*Keep, error) {
 		gctlog.Infoln(gctlog.Global, "GCT logger initialised.")
 	}
 
+	r := ReporterGCT{keep}
+	exchgrequest.SetupGlobalReporter(r)
+
 	// Once everything is set, create and setup exchanges.
 	if err := keep.setupExchanges(ctx); err != nil {
 		return keep, err
 	}
 
 	return keep, nil
+}
+
+type ReporterGCT struct {
+	k *Keep
+}
+
+func (r ReporterGCT) Latency(name, method, rawUrl string, t time.Duration) {
+	// split up the path endpoint
+	u, err := url.Parse(rawUrl)
+	if err != nil {
+		// bad url, do nothing
+		return
+	}
+
+	r.k.ReportEvent(GCTHTTPRequestMetric, name, method, u.Host+u.Path)
+
+	for _, rep := range r.k.reporters {
+		rep.Latency(GCTHTTPLatencyMetric, t, name, method, u.Host+u.Path)
+	}
 }
 
 // +------+
