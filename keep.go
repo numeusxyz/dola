@@ -8,20 +8,21 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/thrasher-corp/gocryptotrader/common"
 	"github.com/thrasher-corp/gocryptotrader/config"
 	"github.com/thrasher-corp/gocryptotrader/currency"
 	"github.com/thrasher-corp/gocryptotrader/engine"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
+	gctlog "github.com/thrasher-corp/gocryptotrader/log"
 	"go.uber.org/multierr"
 )
 
 var ErrNoAssetType = errors.New("asset type not associated with currency pair")
 
 const (
-	defaultWebsocketTrafficTimeout = time.Second * 30
+	constDefaultWebsocketTrafficTimeout    = time.Second * 30
+	constDefaultValidateCredentialsTimeout = time.Second * 5
 )
 
 // +-------------+
@@ -82,7 +83,8 @@ func (b *KeepBuilder) Reporter(r Reporter) *KeepBuilder {
 	return b
 }
 
-func (b *KeepBuilder) Build() (*Keep, error) {
+// nolint: funlen
+func (b *KeepBuilder) Build(ctx context.Context) (*Keep, error) {
 	// Resolve path to config file.
 	b.settings.ConfigFile = ConfigFile(b.settings.ConfigFile)
 
@@ -131,8 +133,15 @@ func (b *KeepBuilder) Build() (*Keep, error) {
 	// Assign custom exchange builder.
 	keep.ExchangeManager.Builder = b.factory
 
+	// enable GCT's verbose output through our logging system
+	if b.settings.Verbose {
+		keep.setupGCTLogging()
+
+		gctlog.Infoln(gctlog.Global, "GCT logger initialised.")
+	}
+
 	// Once everything is set, create and setup exchanges.
-	if err := keep.setupExchanges(GCTLog{nil}); err != nil {
+	if err := keep.setupExchanges(ctx); err != nil {
 		return keep, err
 	}
 
@@ -203,8 +212,7 @@ func Loop(ctx context.Context, k *Keep, e exchange.IBotExchange, s Strategy) err
 	// If this exchange doesn't support websockets we still need to
 	// keep running
 	if !e.IsWebsocketEnabled() {
-		gctlog := GCTLog{nil}
-		gctlog.Warnf(gctlog.ExchangeSys, "%s: no websocket support", e.GetName())
+		What(log.Warn().Str("exchange", e.GetName()), "no websocket support")
 
 		<-ctx.Done()
 
@@ -507,39 +515,26 @@ func (bot *Keep) ReportValue(m Metric, v float64, labels ...string) {
 }
 
 // +-------------------------------+
-// | Keep: GCT compatibility layer |
-// +-------------------------------+
-
-type GCTLog struct {
-	ExchangeSys interface{}
-}
-
-func (g GCTLog) Infof(_ interface{}, data string, v ...interface{}) {
-	What(log.Info(), fmt.Sprintf(data, v...))
-}
-
-func (g GCTLog) Warnf(_ interface{}, data string, v ...interface{}) {
-	What(log.Warn(), fmt.Sprintf(data, v...))
-}
-
-func (g GCTLog) Errorf(_ interface{}, data string, v ...interface{}) {
-	What(log.Error(), fmt.Sprintf(data, v...))
-}
-
-func (g GCTLog) Debugf(_ interface{}, data string, v ...interface{}) {
-	What(log.Debug(), fmt.Sprintf(data, v...))
-}
-
-func (bot *Keep) LoadExchange(cfg *config.Exchange, wg *sync.WaitGroup) error {
-	return bot.loadExchange(cfg, wg, GCTLog{nil})
-}
-
-// +-------------------------------+
 // | Keep: GCT wrapped function    |
 // +-------------------------------+
 
+// GetExchanges is a wrapper of GCT's Engine.GetExchanges.
+//nolint
+func (bot *Keep) GetExchanges() []exchange.IBotExchange {
+	exchgs, err := bot.ExchangeManager.GetExchanges()
+	if err != nil {
+		What(log.Warn().
+			Err(err), "unable to get exchanges")
+
+		return []exchange.IBotExchange{}
+	}
+
+	return exchgs
+}
+
 // ActivatePair activates and makes available the provided currency
 // pair.
+// nolint: stylecheck
 func (bot *Keep) ActivateAsset(e exchange.IBotExchange, a asset.Item) error {
 	base := e.GetBase()
 
@@ -590,25 +585,9 @@ var (
 	ErrExchangeFailedToLoad = errors.New("exchange failed to load")
 )
 
-// getExchange is an unchanged copy of Engine.GetExchanges.
-//nolint
-func (bot *Keep) getExchanges(gctlog GCTLog) []exchange.IBotExchange {
-	exch, err := bot.ExchangeManager.GetExchanges()
-	if err != nil {
-		gctlog.Warnf(gctlog.ExchangeSys, "Cannot get exchanges: %v", err)
-		return []exchange.IBotExchange{}
-	}
-	return exch
-}
-
-func (bot *Keep) GetExchanges() []exchange.IBotExchange {
-	return bot.getExchanges(GCTLog{nil})
-}
-
-// loadExchange is an unchanged copy of Engine.LoadExchange.
-//
-//nolint
-func (bot *Keep) loadExchange(exchCfg *config.Exchange, wg *sync.WaitGroup, gctlog GCTLog) error {
+// loadExchange is an adapted version of GCT's Engine.LoadExchange.
+// nolint: funlen, gocognit, gocyclo, cyclop
+func (bot *Keep) loadExchange(ctx context.Context, exchCfg *config.Exchange, wg *sync.WaitGroup) error {
 	exch, err := bot.ExchangeManager.NewExchangeByName(exchCfg.Name)
 	if err != nil {
 		return err
@@ -629,10 +608,12 @@ func (bot *Keep) loadExchange(exchCfg *config.Exchange, wg *sync.WaitGroup, gctl
 		assets := exchCfg.CurrencyPairs.GetAssetTypes(false)
 		for x := range assets {
 			var pairs currency.Pairs
+
 			pairs, err = exchCfg.CurrencyPairs.GetPairs(assets[x], false)
 			if err != nil {
 				return err
 			}
+
 			exchCfg.CurrencyPairs.StorePairs(assets[x], pairs, true)
 		}
 	}
@@ -640,91 +621,118 @@ func (bot *Keep) loadExchange(exchCfg *config.Exchange, wg *sync.WaitGroup, gctl
 	if bot.Settings.EnableExchangeVerbose {
 		exchCfg.Verbose = true
 	}
+
+	// nolint: nestif
 	if exchCfg.Features != nil {
 		if bot.Settings.EnableExchangeWebsocketSupport &&
 			base.Features.Supports.Websocket {
 			exchCfg.Features.Enabled.Websocket = true
 
 			if exchCfg.WebsocketTrafficTimeout <= 0 {
-				gctlog.Infof(gctlog.ExchangeSys,
-					"Exchange %s Websocket response traffic timeout value not set, defaulting to %v.",
-					exchCfg.Name,
-					defaultWebsocketTrafficTimeout)
-				exchCfg.WebsocketTrafficTimeout = defaultWebsocketTrafficTimeout
+				What(log.Info().
+					Str("exchange", exchCfg.Name).
+					Dur("default", constDefaultWebsocketTrafficTimeout),
+					"Websocket response traffic timeout value not set, setting default")
+
+				exchCfg.WebsocketTrafficTimeout = constDefaultWebsocketTrafficTimeout
 			}
 		}
+
 		if bot.Settings.EnableExchangeAutoPairUpdates &&
 			base.Features.Supports.RESTCapabilities.AutoPairUpdates {
 			exchCfg.Features.Enabled.AutoPairUpdates = true
 		}
+
 		if bot.Settings.DisableExchangeAutoPairUpdates {
 			if base.Features.Supports.RESTCapabilities.AutoPairUpdates {
 				exchCfg.Features.Enabled.AutoPairUpdates = false
 			}
 		}
 	}
+
 	if bot.Settings.HTTPUserAgent != "" {
 		exchCfg.HTTPUserAgent = bot.Settings.HTTPUserAgent
 	}
+
 	if bot.Settings.HTTPProxy != "" {
 		exchCfg.ProxyAddress = bot.Settings.HTTPProxy
 	}
+
 	if bot.Settings.HTTPTimeout != exchange.DefaultHTTPTimeout {
 		exchCfg.HTTPTimeout = bot.Settings.HTTPTimeout
 	}
+
 	if bot.Settings.EnableExchangeHTTPDebugging {
 		exchCfg.HTTPDebugging = bot.Settings.EnableExchangeHTTPDebugging
 	}
 
 	if !bot.Settings.EnableExchangeHTTPRateLimiter {
-		gctlog.Warnf(gctlog.ExchangeSys,
-			"Loaded exchange %s rate limiting has been turned off.\n",
-			exch.GetName(),
-		)
-		err = exch.DisableRateLimiter()
-		if err != nil {
-			gctlog.Errorf(gctlog.ExchangeSys,
-				"Loaded exchange %s rate limiting cannot be turned off: %s.\n",
-				exch.GetName(),
-				err,
-			)
+		What(log.Info().
+			Str("exchange", exch.GetName()),
+			"Rate limiting has been turned off")
+
+		if err := exch.DisableRateLimiter(); err != nil {
+			What(log.Error().
+				Err(err).
+				Str("exchange", exch.GetName()),
+				"unable to disable exchange rate limiter")
 		}
 	}
 
 	exchCfg.Enabled = true
-	err = exch.Setup(exchCfg)
-	if err != nil {
+
+	if err := exch.Setup(exchCfg); err != nil {
 		exchCfg.Enabled = false
+
 		return err
 	}
 
 	bot.ExchangeManager.Add(exch)
+
 	if base.API.AuthenticatedSupport ||
 		base.API.AuthenticatedWebsocketSupport {
 		assetTypes := base.GetAssetTypes(false)
+
 		var useAsset asset.Item
+
 		for a := range assetTypes {
 			err = base.CurrencyPairs.IsAssetEnabled(assetTypes[a])
 			if err != nil {
 				continue
 			}
+
 			useAsset = assetTypes[a]
+
 			break
 		}
-		err = exch.ValidateCredentials(context.TODO(), useAsset)
-		if err != nil {
-			gctlog.Warnf(gctlog.ExchangeSys,
-				"%s: Cannot validate credentials: %s\n",
-				base.Name,
-				err)
+
+		// enforce a max timeout of 5 seconds for validating credentials,
+		// it might be the case that an exchange is rate limiting us, so
+		// we don't want to be waiting forever for this validation to complete
+		ctx, cancel := context.WithTimeout(ctx, constDefaultValidateCredentialsTimeout)
+		defer cancel()
+
+		if err := exch.ValidateCredentials(ctx, useAsset); err != nil {
+			What(log.Warn().
+				Err(err).
+				Str("exchange", exch.GetName()),
+				"unable to validate exchange credentials")
+
+			return err
 		}
 	}
 
 	if wg != nil {
-		exch.Start(wg)
+		if err := exch.Start(wg); err != nil {
+			return fmt.Errorf("unable to start exchange: %w", err)
+		}
 	} else {
 		tempWG := sync.WaitGroup{}
-		exch.Start(&tempWG)
+
+		if err := exch.Start(&tempWG); err != nil {
+			return fmt.Errorf("unable to start exchange: %w", err)
+		}
+
 		tempWG.Wait()
 	}
 
@@ -734,59 +742,37 @@ func (bot *Keep) loadExchange(exchCfg *config.Exchange, wg *sync.WaitGroup, gctl
 // setupExchanges is an (almost) unchanged copy of Engine.SetupExchanges.
 //
 //nolint
-func (bot *Keep) setupExchanges(gctlog GCTLog) error {
+func (bot *Keep) setupExchanges(ctx context.Context) error {
 	var wg sync.WaitGroup
+
 	configs := bot.Config.GetAllExchangeConfigs()
-	// if bot.Settings.EnableAllPairs {
-	// 	bot.dryRunParamInteraction("enableallpairs")
-	// }
-	// if bot.Settings.EnableAllExchanges {
-	// 	bot.dryRunParamInteraction("enableallexchanges")
-	// }
-	// if bot.Settings.EnableExchangeVerbose {
-	// 	bot.dryRunParamInteraction("exchangeverbose")
-	// }
-	// if bot.Settings.EnableExchangeWebsocketSupport {
-	// 	bot.dryRunParamInteraction("exchangewebsocketsupport")
-	// }
-	// if bot.Settings.EnableExchangeAutoPairUpdates {
-	// 	bot.dryRunParamInteraction("exchangeautopairupdates")
-	// }
-	// if bot.Settings.DisableExchangeAutoPairUpdates {
-	// 	bot.dryRunParamInteraction("exchangedisableautopairupdates")
-	// }
-	// if bot.Settings.HTTPUserAgent != "" {
-	// 	bot.dryRunParamInteraction("httpuseragent")
-	// }
-	// if bot.Settings.HTTPProxy != "" {
-	// 	bot.dryRunParamInteraction("httpproxy")
-	// }
-	// if bot.Settings.HTTPTimeout != exchange.DefaultHTTPTimeout {
-	// 	bot.dryRunParamInteraction("httptimeout")
-	// }
-	// if bot.Settings.EnableExchangeHTTPDebugging {
-	// 	bot.dryRunParamInteraction("exchangehttpdebugging")
-	// }
 
 	for x := range configs {
 		if !configs[x].Enabled && !bot.Settings.EnableAllExchanges {
-			gctlog.Debugf(gctlog.ExchangeSys, "%s: Exchange support: Disabled\n", configs[x].Name)
+			What(log.Debug().
+				Str("exchange", configs[x].Name),
+				"exchange disabled")
+
 			continue
 		}
 		wg.Add(1)
 		go func(c config.Exchange) {
 			defer wg.Done()
-			err := bot.LoadExchange(&c, &wg)
+			err := bot.loadExchange(ctx, &c, &wg)
 			if err != nil {
-				gctlog.Errorf(gctlog.ExchangeSys, "LoadExchange %s failed: %s\n", c.Name, err)
+				What(log.Error().
+					Err(err).
+					Str("exchange", c.Name),
+					"exchange load failed")
+
 				return
 			}
-			gctlog.Debugf(gctlog.ExchangeSys,
-				"%s: Exchange support: Enabled (Authenticated API support: %s - Verbose mode: %s).\n",
-				c.Name,
-				common.IsEnabled(c.API.AuthenticatedSupport),
-				common.IsEnabled(c.Verbose),
-			)
+
+			What(log.Debug().
+				Str("exchange", c.Name).
+				Bool("authenticated", c.API.AuthenticatedSupport).
+				Bool("verbose", c.Verbose),
+				"exchange load failed")
 		}(configs[x])
 	}
 	wg.Wait()

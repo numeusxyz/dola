@@ -1,11 +1,14 @@
 package dola
 
 import (
+	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/thrasher-corp/gocryptotrader/common/convert"
+	gctlog "github.com/thrasher-corp/gocryptotrader/log"
 )
 
 // +----------+
@@ -118,4 +121,54 @@ func What(e *zerolog.Event, what string) {
 
 func Msg(e *zerolog.Event) {
 	e.Msg(Location2())
+}
+
+// +-------------------+
+// | GCT logging |
+// +-------------------+.
+func (k *Keep) setupGCTLogging() {
+	k.Config.Logging.AdvancedSettings.ShowLogSystemName = convert.BoolPtr(false)
+	k.Config.Logging.AdvancedSettings.Headers.Info = "i"
+	k.Config.Logging.AdvancedSettings.Headers.Warn = "w"
+	k.Config.Logging.AdvancedSettings.Headers.Debug = "d"
+	k.Config.Logging.AdvancedSettings.Headers.Error = "e"
+
+	gctlog.RWM.Lock()
+	gctlog.GlobalLogConfig = &k.Config.Logging
+	gctlog.RWM.Unlock()
+
+	gctlog.SetupGlobalLogger()
+
+	var console GCTConsoleWriter
+
+	// override all sublogger outputs with our own writer
+	for _, subLogger := range gctlog.SubLoggers {
+		subLogger.SetOutput(console)
+	}
+}
+
+type GCTConsoleWriter struct{}
+
+func (c GCTConsoleWriter) Write(p []byte) (n int, err error) {
+	var l *zerolog.Event
+
+	// look at the first byte of the data, it will be the header
+	// we defined at setupGCTLogging, use that to determine the
+	// log level to apply
+	switch p[0] {
+	case 'i':
+		l = log.Info()
+	case 'w':
+		l = log.Warn()
+	case 'd':
+		l = log.Debug()
+	case 'e':
+		l = log.Error()
+	default:
+		l = log.Debug()
+	}
+
+	l.Msg(strings.TrimSuffix(string(p[1:]), "\n"))
+
+	return len(p), nil
 }

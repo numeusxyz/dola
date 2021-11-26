@@ -7,7 +7,7 @@ import (
 )
 
 func ExampleKeep() {
-	keep, _ := dola.NewKeepBuilder().Build()
+	keep, _ := dola.NewKeepBuilder().Build(context.Background())
 	keep.Root.Add("verbose", dola.VerboseStrategy{}) //nolint:exhaustivestruct
 	keep.Run(context.Background())
 }
