@@ -6,7 +6,7 @@ require (
 	github.com/google/go-cmp v0.5.7
 	github.com/rs/zerolog v1.26.1
 	github.com/thrasher-corp/gocryptotrader v0.0.0-20211125225826-0e6b653b4f19
-	go.uber.org/multierr v1.7.0
+	go.uber.org/multierr v1.8.0
 )
 
 require (
