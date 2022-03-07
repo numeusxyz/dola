@@ -46,7 +46,7 @@ type Strategy interface {
 package main
 
 import (
-	"github.com/numus-digital/dola"
+	"github.com/numeusxyz/dola"
 )
 
 func main() {

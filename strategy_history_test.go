@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/numus-digital/dola"
+	"github.com/numeusxyz/dola"
 )
 
 func TestHistorian_State(t *testing.T) {

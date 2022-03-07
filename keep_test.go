@@ -3,7 +3,7 @@ package dola_test
 import (
 	"context"
 
-	"github.com/numus-digital/dola"
+	"github.com/numeusxyz/dola"
 )
 
 func ExampleKeep() {

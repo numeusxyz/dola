@@ -1,4 +1,4 @@
-module github.com/numus-digital/dola
+module github.com/numeusxyz/dola
 
 go 1.17
 

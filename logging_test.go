@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/numus-digital/dola"
+	"github.com/numeusxyz/dola"
 )
 
 func TestLogState(t *testing.T) {
