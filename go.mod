@@ -6,7 +6,7 @@ require (
 	github.com/google/go-cmp v0.5.7
 	github.com/rs/zerolog v1.26.1
 	github.com/thrasher-corp/gocryptotrader v0.0.0-20211125225826-0e6b653b4f19
-	go.uber.org/multierr v1.7.0
+	go.uber.org/multierr v1.10.0
 )
 
 require (
@@ -31,7 +31,6 @@ require (
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/null v8.0.0+incompatible // indirect
 	github.com/volatiletech/sqlboiler v3.7.1+incompatible // indirect
-	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/crypto v0.0.0-20211215165025-cf75a172585e // indirect
 	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d // indirect
 	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf // indirect
